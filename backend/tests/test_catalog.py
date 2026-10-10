@@ -39,7 +39,7 @@ def test_failed_upstream_preserves_old_catalog_and_cools_down(
 
     catalog = Catalog(tmp_path, offline)
     assert catalog.ensure("stations") == cached
-    assert catalog.freshness("stations")["stale"]
+    assert catalog.freshness("stations").get("stale")
     assert catalog.freshness("stations")["error"]
     Catalog(tmp_path, offline).ensure("stations")
     assert calls == ["stations"]

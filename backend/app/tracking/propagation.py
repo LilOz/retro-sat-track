@@ -7,7 +7,7 @@ from threading import Lock
 import numpy as np
 from skyfield.api import EarthSatellite, load, wgs84
 from skyfield.framelib import itrs
-from skyfield.positionlib import Geocentric
+from skyfield.positionlib import ICRF
 from skyfield.timelib import Timescale
 
 from app.models import Observer
@@ -47,7 +47,7 @@ class Tracker:
             return self.satellites[key]
 
     @staticmethod
-    def check(position: Geocentric) -> None:
+    def check(position: ICRF) -> None:
         messages = np.asarray(position.message, dtype=object).reshape(-1)
         if any(message for message in messages) or not np.all(
             np.isfinite(position.position.km)

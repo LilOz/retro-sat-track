@@ -104,7 +104,8 @@ class Catalog:
                         self.errors[group] = previous_attempt["error"]
                 except OSError, ValueError, KeyError, TypeError:
                     pass
-            cached, now = self.groups.get(group), time()
+            cached: CatalogSnapshot | None = self.groups.get(group)
+            now = time()
             if (
                 cached and now - cached["fetched_at"] < REFRESH_SECONDS
             ) or now < self.retry_after.get(group, 0):

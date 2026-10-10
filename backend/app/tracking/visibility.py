@@ -72,13 +72,14 @@ class PassPredictor:
             altitude_degrees=min_elevation,
         )
         result: list[SatellitePass] = []
-        rise: Time | None = None
-        peaks: list[Time] = []
+        rise: Time[float] | None = None
+        peaks: list[Time[float]] = []
 
-        def peak_elevation(value: Time) -> float:
+        def peak_elevation(value: Time[float]) -> float:
             return float(difference.at(value).altaz()[0].degrees)
 
-        for t, event in zip(times, events):
+        for index, event in enumerate(events):
+            t = times[index]
             if event == 0:
                 rise, peaks = t, []
             elif event == 1 and rise is not None:

@@ -98,16 +98,31 @@ uv run --locked ruff check --fix .
 uv run --locked black .
 ```
 
-Run the same formatting, lint and backend checks as CI:
+Run the same formatting, lint, type and backend checks as CI:
 
 ```sh
 uv sync --locked --dev
 uv run --locked black --check --diff .
 uv run --locked ruff check .
+uv run --locked pyright
 uv run --locked pytest -q
 ```
 
-Offline checks cover published Skyfield position and pass examples, altitude/speed bounds, orbit versus ground-track coordinates, ongoing passes, persistent cache/cooldown behaviour, API responses, observer validation/persistence and extended catalog IDs. Black handles formatting; Ruff checks Python errors, import ordering and missing parameter/return annotations. Both use Python 3.14 and an 88-character line length. CI installs Python 3.14 and uses uv with the committed lockfile. Run the checks from the repository root.
+Offline checks cover published Skyfield position and pass examples, altitude/speed bounds, orbit versus ground-track coordinates, ongoing passes, persistent cache/cooldown behaviour, API responses, observer validation/persistence and extended catalog IDs. Black handles formatting; Ruff checks Python errors, import ordering and missing parameter/return annotations. Black and Ruff use Python 3.14 and an 88-character line length. Pyright checks the application, test helpers and local Skyfield stubs in standard mode. CI installs Python 3.14 and uses uv with the committed lockfile. Run the checks from the repository root.
+
+## Editor type checking
+
+Pyright's language server and command-line check share `[tool.pyright]` in `pyproject.toml`: Python 3.14, the `backend` import path, the uv `.venv` and local stubs in `typings/`. Build outputs are excluded. See [Pyright configuration](https://github.com/microsoft/pyright/blob/main/docs/configuration.md).
+
+For an editor using the Pyright LSP, launch this command from the repository root:
+
+```sh
+uv run --locked pyright-langserver --stdio
+```
+
+Configure that command in your editor's Python language-server settings. For VS Code/Pylance, open this WSL project through WSL and select `.venv/bin/python` as the Python interpreter; Pylance uses the selected interpreter rather than Pyright's `venv` setting. Reload the language server if it was already running with the old configuration.
+
+The partial Skyfield stubs describe the numerical properties and scalar/array results used here, without changing runtime calculations. See `typings/README.md` for their scope.
 
 ## Attribution
 

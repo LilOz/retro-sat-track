@@ -1,6 +1,8 @@
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
@@ -60,9 +62,15 @@ def test_observer_validation_and_persistence(
 def test_catalog_supports_six_digit_ids(
     client: TestClient, record: OrbitalElements
 ) -> None:
-    extended = {**record, "NORAD_CAT_ID": 100001, "OBJECT_NAME": "NEW SPACECRAFT"}
+    extended: OrbitalElements = {
+        **record,
+        "NORAD_CAT_ID": 100001,
+        "OBJECT_NAME": "NEW SPACECRAFT",
+    }
     client.get("/api/v1/satellites")
-    client.app.state.catalog.groups["stations"]["records"].append(extended)
+    application = cast(FastAPI, client.app)
+    catalog = cast(Catalog, application.state.catalog)
+    catalog.groups["stations"]["records"].append(extended)
     assert (
         client.get("/api/v1/satellites?q=100001").json()["satellites"][0]["id"]
         == 100001

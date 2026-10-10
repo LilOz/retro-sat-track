@@ -24,5 +24,7 @@ jobs:
         run: uv run --locked black --check --diff .
       - name: Check Ruff lint
         run: uv run --locked ruff check .
+      - name: Check Pyright types
+        run: uv run --locked pyright
       - name: Run backend checks
         run: uv run --locked pytest -q

@@ -13,6 +13,7 @@ dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "skyfield>=1.49,<2", "h
 [dependency-groups]
 dev = [
     "black>=26,<27",
+    "pyright>=1.1,<2",
     "pytest>=8,<10",
     "ruff>=0.15,<1",
 ]
@@ -39,3 +40,13 @@ src = ["backend"]
 
 [tool.ruff.lint]
 select = ["ANN", "E4", "E7", "E9", "F", "I"]
+
+[tool.pyright]
+include = ["backend", "run.py", "typings"]
+exclude = [".venv", "build", "dist"]
+extraPaths = ["backend"]
+stubPath = "typings"
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.14"
+typeCheckingMode = "standard"
