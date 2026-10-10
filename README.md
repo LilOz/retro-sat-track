@@ -6,26 +6,18 @@ A local PC satellite terminal with a phosphor-green globe, orbital telemetry and
 
 ## Run on your PC
 
-Requires Python **3.11+**, a modern browser and internet access for the first catalog download. No Node.js, API key, external fonts or frontend build step is required.
+Uses Python **3.14** and [uv](https://docs.astral.sh/uv/getting-started/installation/), plus a modern browser and internet access for the first catalog download. No Node.js, API key, external fonts or frontend build step is required.
 
-Linux, macOS or WSL, from this repository:
+Install uv using the linked instructions, then run these commands from the repository root on Linux, macOS, WSL or Windows PowerShell:
 
 ```sh
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e './backend[dev]'
-python run.py
+uv sync --locked
+uv run --locked run.py
 ```
 
-Windows PowerShell:
+uv uses `.python-version` to select Python 3.14, downloads it if needed, and creates the local `.venv` with dependencies from the committed `uv.lock`. Project metadata and development dependencies live in the root `pyproject.toml`; no manual environment activation is needed. If migrating from the earlier Python 3.11/3.12 setup, stop the running server before syncing; uv recreates the project environment for Python 3.14.
 
-```powershell
-py -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".\backend[dev]"
-.\.venv\Scripts\python.exe run.py
-```
-
-Open **http://127.0.0.1:8000** if your browser does not open automatically. For WSL, use `python run.py --no-browser` and open that address in your Windows browser. Stop with Ctrl+C. Use `--port 8080` if port 8000 is busy.
+Open **http://127.0.0.1:8000** if your browser does not open automatically. For WSL, use `uv run --locked run.py --no-browser` and open that address in your Windows browser. Stop with Ctrl+C. Use `--port 8080` if port 8000 is busy.
 
 Select **Set ground station** and enter your name, latitude, longitude and elevation. The app starts with the ISS and leaves coordinates unset until saved. Coordinates stay in the local data directory and are never sent to CelesTrak.
 
@@ -54,8 +46,10 @@ Altitude is WGS84 ellipsoid height; speed is geocentric inertial velocity magnit
 ```text
 retro-sat-track/
 ├── run.py
+├── pyproject.toml             # Project metadata and dependencies
+├── uv.lock                    # Reproducible dependency versions
+├── .python-version            # Python 3.14
 ├── backend/
-│   ├── pyproject.toml
 │   ├── app/
 │   │   ├── main.py            # FastAPI and saved observer
 │   │   ├── models.py
@@ -92,16 +86,16 @@ Observer body:
 {"name":"Home station","latitude_deg":51.5,"longitude_deg":-0.12,"elevation_m":0}
 ```
 
-Pass IDs belong to the in-memory forecast cache; request the list again after restart. The server binds to loopback by default. For a later ESP experiment, `python run.py --host 0.0.0.0 --no-browser` exposes the service on your LAN. The MVP has no API authentication and should not be exposed to the public internet.
+Pass IDs belong to the in-memory forecast cache; request the list again after restart. The server binds to loopback by default. For a later ESP experiment, `uv run --locked run.py --host 0.0.0.0 --no-browser` exposes the service on your LAN. The MVP has no API authentication and should not be exposed to the public internet.
 
 ## Checks
 
 ```sh
-cd backend
-python -m pytest -q
+uv sync --locked --dev
+uv run --locked pytest -q
 ```
 
-Offline checks cover published Skyfield position and pass examples, altitude/speed bounds, orbit versus ground-track coordinates, ongoing passes, persistent cache/cooldown behaviour, API responses, observer validation/persistence and extended catalog IDs. CI runs on Python 3.11 and 3.12.
+Offline checks cover published Skyfield position and pass examples, altitude/speed bounds, orbit versus ground-track coordinates, ongoing passes, persistent cache/cooldown behaviour, API responses, observer validation/persistence and extended catalog IDs. CI installs Python 3.14 and uses uv with the committed lockfile. Run the checks from the repository root.
 
 ## Attribution
 

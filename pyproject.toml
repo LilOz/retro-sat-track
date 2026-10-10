@@ -6,18 +6,20 @@ build-backend = "setuptools.build_meta"
 name = "retro-sat-track"
 version = "0.1.0"
 description = "A local retro satellite tracking terminal powered by CelesTrak"
-requires-python = ">=3.11"
+readme = "README.md"
+requires-python = ">=3.14,<3.15"
 dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "skyfield>=1.49,<2", "httpx>=0.27,<1"]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = ["pytest>=8,<10"]
 
 [tool.setuptools.packages.find]
+where = ["backend"]
 include = ["app*"]
 
 [tool.setuptools.package-data]
 app = ["static/*"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
+testpaths = ["backend/tests"]
+pythonpath = ["backend"]

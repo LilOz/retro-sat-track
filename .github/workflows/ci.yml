@@ -9,16 +9,16 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: backend/pyproject.toml
-      - run: python -m pip install -e './backend[dev]'
-      - run: python -m pytest -q
-        working-directory: backend
+          version: '0.13.0'
+          enable-cache: true
+      - name: Install Python 3.14
+        run: uv python install
+      - name: Install locked dependencies
+        run: uv sync --locked --dev
+      - name: Run backend checks
+        run: uv run --locked pytest -q

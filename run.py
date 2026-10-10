@@ -1,4 +1,4 @@
-"""Launch the PC terminal: python run.py [--host 0.0.0.0] [--port 8000]."""
+"""Launch the PC terminal: uv run run.py [--host 0.0.0.0] [--port 8000]."""
 import argparse
 import sys
 import threading
