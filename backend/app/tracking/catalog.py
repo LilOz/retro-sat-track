@@ -1,4 +1,5 @@
 """Lazy group downloads, durable cache and conservative upstream requests."""
+
 import json
 import logging
 from datetime import datetime, timezone
@@ -8,7 +9,12 @@ from time import time
 
 import httpx
 
-GROUPS = {"stations": "Space stations", "starlink": "Starlink", "science": "Science", "gps-ops": "GPS"}
+GROUPS = {
+    "stations": "Space stations",
+    "starlink": "Starlink",
+    "science": "Science",
+    "gps-ops": "GPS",
+}
 REFRESH_SECONDS = 2 * 60 * 60
 MAX_ELEMENT_AGE_DAYS = 7
 LOGGER = logging.getLogger(__name__)
@@ -31,17 +37,30 @@ class Catalog:
     @staticmethod
     def _download(group):
         with httpx.Client(timeout=20, follow_redirects=True) as client:
-            response = client.get("https://celestrak.org/NORAD/elements/gp.php",
-                                  params={"GROUP": group, "FORMAT": "JSON"},
-                                  headers={"User-Agent": "retro-sat-track/0.1 (local desktop tracker)"})
+            response = client.get(
+                "https://celestrak.org/NORAD/elements/gp.php",
+                params={"GROUP": group, "FORMAT": "JSON"},
+                headers={"User-Agent": "retro-sat-track/0.1 (local desktop tracker)"},
+            )
             response.raise_for_status()
             return response.json()
 
     @staticmethod
     def _validate(records):
-        required = {"NORAD_CAT_ID", "OBJECT_NAME", "EPOCH", "MEAN_MOTION", "ECCENTRICITY",
-                    "INCLINATION", "RA_OF_ASC_NODE", "ARG_OF_PERICENTER", "MEAN_ANOMALY",
-                    "BSTAR", "MEAN_MOTION_DOT", "MEAN_MOTION_DDOT"}
+        required = {
+            "NORAD_CAT_ID",
+            "OBJECT_NAME",
+            "EPOCH",
+            "MEAN_MOTION",
+            "ECCENTRICITY",
+            "INCLINATION",
+            "RA_OF_ASC_NODE",
+            "ARG_OF_PERICENTER",
+            "MEAN_ANOMALY",
+            "BSTAR",
+            "MEAN_MOTION_DOT",
+            "MEAN_MOTION_DDOT",
+        }
         if not isinstance(records, list) or not records:
             raise ValueError("CelesTrak returned an empty or invalid catalog")
         for record in records:
@@ -63,7 +82,7 @@ class Catalog:
                     self._validate(cached["records"])
                     cached["fetched_at"] = float(cached["fetched_at"])
                     self.groups[group] = cached
-                except (OSError, ValueError, KeyError, TypeError):
+                except OSError, ValueError, KeyError, TypeError:
                     LOGGER.warning("Ignoring invalid cache for %s", group)
             attempt_path = self.directory / f"{group}.attempt.json"
             if group not in self.retry_after and attempt_path.exists():
@@ -72,13 +91,17 @@ class Catalog:
                     self.retry_after[group] = float(attempt["retry_after"])
                     if attempt.get("error"):
                         self.errors[group] = attempt["error"]
-                except (OSError, ValueError, KeyError, TypeError):
+                except OSError, ValueError, KeyError, TypeError:
                     pass
             cached, now = self.groups.get(group), time()
-            if (cached and now - cached["fetched_at"] < REFRESH_SECONDS) or now < self.retry_after.get(group, 0):
+            if (
+                cached and now - cached["fetched_at"] < REFRESH_SECONDS
+            ) or now < self.retry_after.get(group, 0):
                 if cached:
                     return cached
-                raise CatalogUnavailable(self.errors.get(group, "Catalog download is cooling down"))
+                raise CatalogUnavailable(
+                    self.errors.get(group, "Catalog download is cooling down")
+                )
             self.retry_after[group] = now + REFRESH_SECONDS
             attempt = {"retry_after": self.retry_after[group]}
             attempt_path.write_text(json.dumps(attempt))
@@ -111,7 +134,13 @@ class Catalog:
         if not cached:
             return {"loaded": False, "error": self.errors.get(group)}
         age = max(0, time() - cached["fetched_at"])
-        return {"loaded": True, "count": len(cached["records"]),
-                "fetched_at": datetime.fromtimestamp(cached["fetched_at"], timezone.utc).isoformat(),
-                "download_age_seconds": round(age), "stale": age >= REFRESH_SECONDS,
-                "error": self.errors.get(group)}
+        return {
+            "loaded": True,
+            "count": len(cached["records"]),
+            "fetched_at": datetime.fromtimestamp(
+                cached["fetched_at"], timezone.utc
+            ).isoformat(),
+            "download_age_seconds": round(age),
+            "stale": age >= REFRESH_SECONDS,
+            "error": self.errors.get(group),
+        }

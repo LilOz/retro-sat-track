@@ -20,5 +20,9 @@ jobs:
         run: uv python install
       - name: Install locked dependencies
         run: uv sync --locked --dev
+      - name: Check Black formatting
+        run: uv run --locked black --check --diff .
+      - name: Check Ruff lint
+        run: uv run --locked ruff check .
       - name: Run backend checks
         run: uv run --locked pytest -q

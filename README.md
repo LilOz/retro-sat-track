@@ -90,12 +90,24 @@ Pass IDs belong to the in-memory forecast cache; request the list again after re
 
 ## Checks
 
+Format Python code and sort imports with Black and Ruff:
+
 ```sh
 uv sync --locked --dev
+uv run --locked ruff check --fix .
+uv run --locked black .
+```
+
+Run the same formatting, lint and backend checks as CI:
+
+```sh
+uv sync --locked --dev
+uv run --locked black --check --diff .
+uv run --locked ruff check .
 uv run --locked pytest -q
 ```
 
-Offline checks cover published Skyfield position and pass examples, altitude/speed bounds, orbit versus ground-track coordinates, ongoing passes, persistent cache/cooldown behaviour, API responses, observer validation/persistence and extended catalog IDs. CI installs Python 3.14 and uses uv with the committed lockfile. Run the checks from the repository root.
+Offline checks cover published Skyfield position and pass examples, altitude/speed bounds, orbit versus ground-track coordinates, ongoing passes, persistent cache/cooldown behaviour, API responses, observer validation/persistence and extended catalog IDs. Black handles formatting; Ruff checks Python errors and import ordering. Both use Python 3.14 and an 88-character line length. CI installs Python 3.14 and uses uv with the committed lockfile. Run the checks from the repository root.
 
 ## Attribution
 

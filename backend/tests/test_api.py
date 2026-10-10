@@ -23,11 +23,23 @@ def test_catalog_search_and_unknown_satellite(client):
 
 def test_observer_validation_and_persistence(client, tmp_path, record):
     assert client.get("/api/v1/passes").status_code == 409
-    assert client.post("/api/v1/observer", json={"latitude_deg": 91, "longitude_deg": 0}).status_code == 422
-    location = {"name": "Desk", "latitude_deg": 51.5, "longitude_deg": -.12, "elevation_m": 18}
+    assert (
+        client.post(
+            "/api/v1/observer", json={"latitude_deg": 91, "longitude_deg": 0}
+        ).status_code
+        == 422
+    )
+    location = {
+        "name": "Desk",
+        "latitude_deg": 51.5,
+        "longitude_deg": -0.12,
+        "elevation_m": 18,
+    }
     assert client.post("/api/v1/observer", json=location).json() == location
     assert client.get("/api/v1/status").json()["observer"] == location
-    with TestClient(create_app(tmp_path, Catalog(tmp_path / "catalog", lambda _: [record]))) as restarted:
+    with TestClient(
+        create_app(tmp_path, Catalog(tmp_path / "catalog", lambda _: [record]))
+    ) as restarted:
         assert restarted.get("/api/v1/status").json()["observer"] == location
     assert client.get("/api/v1/passes?lat=51.5").status_code == 422
     assert client.get("/api/v1/passes?lat=nan&lon=0").status_code == 422
@@ -38,7 +50,10 @@ def test_catalog_supports_six_digit_ids(client, record):
     extended = {**record, "NORAD_CAT_ID": 100001, "OBJECT_NAME": "NEW SPACECRAFT"}
     client.get("/api/v1/satellites")
     client.app.state.catalog.groups["stations"]["records"].append(extended)
-    assert client.get("/api/v1/satellites?q=100001").json()["satellites"][0]["id"] == 100001
+    assert (
+        client.get("/api/v1/satellites?q=100001").json()["satellites"][0]["id"]
+        == 100001
+    )
 
 
 def test_states_tracks_and_pass_details(client, monkeypatch, instant, observer):
@@ -50,8 +65,17 @@ def test_states_tracks_and_pass_details(client, monkeypatch, instant, observer):
     assert state.status_code == 200
     assert 380 < state.json()["altitude_km"] < 450
     assert client.get("/api/v1/scene").json()["states"][0]["id"] == 25544
-    assert len(client.get("/api/v1/satellites/25544/track?samples=60").json()["ground_track"]) == 60
+    assert (
+        len(
+            client.get("/api/v1/satellites/25544/track?samples=60").json()[
+                "ground_track"
+            ]
+        )
+        == 60
+    )
     assert client.get("/api/v1/satellites/25544/track?samples=1").status_code == 422
     passes = client.get("/api/v1/passes").json()["passes"]
     assert passes
-    assert client.get(f"/api/v1/passes/{passes[0]['id']}").json()["id"] == passes[0]["id"]
+    assert (
+        client.get(f"/api/v1/passes/{passes[0]['id']}").json()["id"] == passes[0]["id"]
+    )
