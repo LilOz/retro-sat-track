@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from threading import RLock
+from threading import Lock
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException, Query
@@ -21,7 +21,7 @@ def create_app(data_dir=None, catalog=None):
     directory = Path(data_dir or os.environ.get("SAT_TRACK_DATA_DIR", DEFAULT_DATA))
     directory.mkdir(parents=True, exist_ok=True)
     catalog = catalog or Catalog(directory / "catalog")
-    tracker, observer_path, lock = Tracker(), directory / "observer.json", RLock()
+    tracker, observer_path, lock = Tracker(), directory / "observer.json", Lock()
     predictor, observer = PassPredictor(tracker), None
     if observer_path.exists():
         try:

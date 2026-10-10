@@ -2,7 +2,7 @@
 
 import math
 from datetime import UTC, datetime, timedelta
-from threading import RLock
+from threading import Lock
 
 import numpy as np
 from skyfield.api import EarthSatellite, load, wgs84
@@ -32,7 +32,7 @@ class Tracker:
     def __init__(self):
         self.ts = load.timescale(builtin=True)
         self.satellites = {}
-        self.lock = RLock()
+        self.lock = Lock()
 
     def satellite(self, record):
         key = (int(record["NORAD_CAT_ID"]), record["EPOCH"])

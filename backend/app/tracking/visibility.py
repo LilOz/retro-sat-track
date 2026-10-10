@@ -2,7 +2,7 @@
 
 import hashlib
 from datetime import timedelta
-from threading import RLock
+from threading import Lock
 from time import monotonic
 
 import numpy as np
@@ -14,7 +14,7 @@ from app.tracking.propagation import compass, iso, utcnow
 class PassPredictor:
     def __init__(self, tracker):
         self.tracker, self.cache, self.details = tracker, {}, {}
-        self.lock = RLock()
+        self.lock = Lock()
 
     def predict(self, record, observer, hours=48, min_elevation=10, now=None):
         now = now or utcnow()

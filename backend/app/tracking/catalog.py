@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from threading import RLock
+from threading import Lock
 from time import time
 
 import httpx
@@ -32,7 +32,7 @@ class Catalog:
         self.groups = {}
         self.retry_after = {}
         self.errors = {}
-        self.lock = RLock()
+        self.lock = Lock()
 
     @staticmethod
     def _download(group):
