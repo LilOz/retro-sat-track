@@ -1,24 +1,39 @@
 """Geometric passes above an observer's elevation mask (no optical guarantee)."""
 
 import hashlib
-from datetime import timedelta
+from datetime import datetime, timedelta
 from threading import Lock
 from time import monotonic
+from typing import cast
 
 import numpy as np
 from skyfield.api import wgs84
+from skyfield.timelib import Time
 
-from app.tracking.propagation import compass, iso, utcnow
+from app.models import Observer
+from app.schemas import ObserverData, OrbitalElements, PassForecast, SatellitePass
+from app.tracking.propagation import Tracker, compass, iso, utcnow
+
+type ForecastKey = tuple[int | str, str, float, float, float, int, float]
 
 
 class PassPredictor:
-    def __init__(self, tracker):
-        self.tracker, self.cache, self.details = tracker, {}, {}
+    def __init__(self, tracker: Tracker) -> None:
+        self.tracker = tracker
+        self.cache: dict[ForecastKey, tuple[float, PassForecast]] = {}
+        self.details: dict[str, SatellitePass] = {}
         self.lock = Lock()
 
-    def predict(self, record, observer, hours=48, min_elevation=10, now=None):
+    def predict(
+        self,
+        record: OrbitalElements,
+        observer: Observer,
+        hours: int = 48,
+        min_elevation: float = 10,
+        now: datetime | None = None,
+    ) -> PassForecast:
         now = now or utcnow()
-        key = (
+        key: ForecastKey = (
             record["NORAD_CAT_ID"],
             record["EPOCH"],
             observer.latitude_deg,
@@ -56,7 +71,13 @@ class PassPredictor:
             self.tracker.ts.from_datetime(search_end),
             altitude_degrees=min_elevation,
         )
-        result, rise, peaks = [], None, []
+        result: list[SatellitePass] = []
+        rise: Time | None = None
+        peaks: list[Time] = []
+
+        def peak_elevation(value: Time) -> float:
+            return float(difference.at(value).altaz()[0].degrees)
+
         for t, event in zip(times, events):
             if event == 0:
                 rise, peaks = t, []
@@ -69,12 +90,7 @@ class PassPredictor:
                     and t.utc_datetime() > now
                     and rise.utc_datetime() < end
                 ):
-                    peak = max(
-                        peaks,
-                        key=lambda value: float(
-                            difference.at(value).altaz()[0].degrees
-                        ),
-                    )
+                    peak = max(peaks, key=peak_elevation)
                     _, rise_az, _ = difference.at(rise).altaz()
                     peak_alt, _, _ = difference.at(peak).altaz()
                     _, set_az, _ = difference.at(t).altaz()
@@ -82,7 +98,7 @@ class PassPredictor:
                     pass_id = hashlib.sha256(
                         f"{key}:{iso(rise_date)}".encode()
                     ).hexdigest()[:20]
-                    item = {
+                    item: SatellitePass = {
                         "id": pass_id,
                         "satellite_id": int(record["NORAD_CAT_ID"]),
                         "name": record["OBJECT_NAME"],
@@ -100,6 +116,7 @@ class PassPredictor:
                         "in_progress": rise_date <= now < set_date,
                         "min_elevation_deg": min_elevation,
                         "visibility": "geometric; sunlight and weather not evaluated",
+                        "sky_path": [],
                     }
                     sample_times = self.tracker.ts.from_datetimes(
                         [
@@ -122,9 +139,9 @@ class PassPredictor:
             float(difference.at(self.tracker.ts.from_datetime(now)).altaz()[0].degrees)
             >= min_elevation
         )
-        response = {
+        response: PassForecast = {
             "satellite_id": int(record["NORAD_CAT_ID"]),
-            "observer": observer.model_dump(),
+            "observer": cast(ObserverData, observer.model_dump()),
             "generated_utc": iso(now),
             "window_end_utc": iso(end),
             "min_elevation_deg": min_elevation,
@@ -144,6 +161,6 @@ class PassPredictor:
             self.cache[key] = (monotonic(), response)
         return response
 
-    def detail(self, pass_id):
+    def detail(self, pass_id: str) -> SatellitePass | None:
         with self.lock:
             return self.details.get(pass_id)

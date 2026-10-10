@@ -7,8 +7,11 @@ from threading import Lock
 import numpy as np
 from skyfield.api import EarthSatellite, load, wgs84
 from skyfield.framelib import itrs
+from skyfield.positionlib import Geocentric
+from skyfield.timelib import Timescale
 
 from app.models import Observer
+from app.schemas import OrbitalElements, OrbitTrack, SatelliteState
 from app.tracking.catalog import MAX_ELEMENT_AGE_DAYS
 
 
@@ -16,25 +19,25 @@ class PropagationError(Exception):
     pass
 
 
-def utcnow():
+def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
-def iso(value):
+def iso(value: datetime) -> str:
     return value.isoformat().replace("+00:00", "Z")
 
 
-def compass(degrees):
+def compass(degrees: float) -> str:
     return ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][int((degrees + 22.5) // 45) % 8]
 
 
 class Tracker:
-    def __init__(self):
-        self.ts = load.timescale(builtin=True)
-        self.satellites = {}
+    def __init__(self) -> None:
+        self.ts: Timescale = load.timescale(builtin=True)
+        self.satellites: dict[tuple[int, str], EarthSatellite] = {}
         self.lock = Lock()
 
-    def satellite(self, record):
+    def satellite(self, record: OrbitalElements) -> EarthSatellite:
         key = (int(record["NORAD_CAT_ID"]), record["EPOCH"])
         with self.lock:
             if key not in self.satellites:
@@ -44,7 +47,7 @@ class Tracker:
             return self.satellites[key]
 
     @staticmethod
-    def check(position):
+    def check(position: Geocentric) -> None:
         messages = np.asarray(position.message, dtype=object).reshape(-1)
         if any(message for message in messages) or not np.all(
             np.isfinite(position.position.km)
@@ -53,7 +56,9 @@ class Tracker:
                 "Orbit cannot be propagated with these elements; select another spacecraft"
             )
 
-    def state(self, record, observer: Observer, now=None):
+    def state(
+        self, record: OrbitalElements, observer: Observer, now: datetime | None = None
+    ) -> SatelliteState:
         now = now or utcnow()
         sat, t = self.satellite(record), self.ts.from_datetime(now)
         position = sat.at(t)
@@ -93,7 +98,9 @@ class Tracker:
             ],
         }
 
-    def track(self, record, samples=180, now=None):
+    def track(
+        self, record: OrbitalElements, samples: int = 180, now: datetime | None = None
+    ) -> OrbitTrack:
         now = now or utcnow()
         sat, period = self.satellite(record), 86400 / float(record["MEAN_MOTION"])
         dates = [

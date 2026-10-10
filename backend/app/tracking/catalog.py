@@ -2,12 +2,23 @@
 
 import json
 import logging
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 from time import time
+from typing import cast
 
 import httpx
+
+from app.schemas import (
+    CatalogAttempt,
+    CatalogFreshness,
+    CatalogSnapshot,
+    OrbitalElements,
+)
+
+type CatalogFetcher = Callable[[str], object]
 
 GROUPS = {
     "stations": "Space stations",
@@ -25,17 +36,17 @@ class CatalogUnavailable(Exception):
 
 
 class Catalog:
-    def __init__(self, directory: Path, fetcher=None):
+    def __init__(self, directory: Path, fetcher: CatalogFetcher | None = None) -> None:
         self.directory = directory
         self.directory.mkdir(parents=True, exist_ok=True)
         self.fetcher = fetcher or self._download
-        self.groups = {}
-        self.retry_after = {}
-        self.errors = {}
+        self.groups: dict[str, CatalogSnapshot] = {}
+        self.retry_after: dict[str, float] = {}
+        self.errors: dict[str, str] = {}
         self.lock = Lock()
 
     @staticmethod
-    def _download(group):
+    def _download(group: str) -> object:
         with httpx.Client(timeout=20, follow_redirects=True) as client:
             response = client.get(
                 "https://celestrak.org/NORAD/elements/gp.php",
@@ -46,7 +57,7 @@ class Catalog:
             return response.json()
 
     @staticmethod
-    def _validate(records):
+    def _validate(records: object) -> list[OrbitalElements]:
         required = {
             "NORAD_CAT_ID",
             "OBJECT_NAME",
@@ -69,28 +80,28 @@ class Catalog:
             if int(record["NORAD_CAT_ID"]) <= 0 or float(record["MEAN_MOTION"]) <= 0:
                 raise ValueError("CelesTrak returned invalid orbital elements")
             datetime.fromisoformat(record["EPOCH"].replace("Z", "+00:00"))
-        return records
+        return cast(list[OrbitalElements], records)
 
-    def ensure(self, group):
+    def ensure(self, group: str) -> CatalogSnapshot:
         if group not in GROUPS:
             raise ValueError("Unknown satellite group")
         with self.lock:
             path = self.directory / f"{group}.json"
             if group not in self.groups and path.exists():
                 try:
-                    cached = json.loads(path.read_text())
-                    self._validate(cached["records"])
-                    cached["fetched_at"] = float(cached["fetched_at"])
-                    self.groups[group] = cached
+                    payload = json.loads(path.read_text())
+                    self._validate(payload["records"])
+                    payload["fetched_at"] = float(payload["fetched_at"])
+                    self.groups[group] = cast(CatalogSnapshot, payload)
                 except OSError, ValueError, KeyError, TypeError:
                     LOGGER.warning("Ignoring invalid cache for %s", group)
             attempt_path = self.directory / f"{group}.attempt.json"
             if group not in self.retry_after and attempt_path.exists():
                 try:
-                    attempt = json.loads(attempt_path.read_text())
-                    self.retry_after[group] = float(attempt["retry_after"])
-                    if attempt.get("error"):
-                        self.errors[group] = attempt["error"]
+                    previous_attempt = json.loads(attempt_path.read_text())
+                    self.retry_after[group] = float(previous_attempt["retry_after"])
+                    if previous_attempt.get("error"):
+                        self.errors[group] = previous_attempt["error"]
                 except OSError, ValueError, KeyError, TypeError:
                     pass
             cached, now = self.groups.get(group), time()
@@ -103,7 +114,7 @@ class Catalog:
                     self.errors.get(group, "Catalog download is cooling down")
                 )
             self.retry_after[group] = now + REFRESH_SECONDS
-            attempt = {"retry_after": self.retry_after[group]}
+            attempt: CatalogAttempt = {"retry_after": self.retry_after[group]}
             attempt_path.write_text(json.dumps(attempt))
             try:
                 records = self._validate(self.fetcher(group))
@@ -121,15 +132,16 @@ class Catalog:
                 attempt_path.write_text(json.dumps(attempt))
                 if not cached:
                     raise CatalogUnavailable(error) from exc
+            assert cached is not None
             return cached
 
-    def record(self, satellite_id, group):
+    def record(self, satellite_id: int, group: str) -> OrbitalElements:
         for record in self.ensure(group)["records"]:
             if int(record["NORAD_CAT_ID"]) == satellite_id:
                 return record
         raise KeyError(satellite_id)
 
-    def freshness(self, group):
+    def freshness(self, group: str) -> CatalogFreshness:
         cached = self.groups.get(group)
         if not cached:
             return {"loaded": False, "error": self.errors.get(group)}

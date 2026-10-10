@@ -107,7 +107,7 @@ uv run --locked ruff check .
 uv run --locked pytest -q
 ```
 
-Offline checks cover published Skyfield position and pass examples, altitude/speed bounds, orbit versus ground-track coordinates, ongoing passes, persistent cache/cooldown behaviour, API responses, observer validation/persistence and extended catalog IDs. Black handles formatting; Ruff checks Python errors and import ordering. Both use Python 3.14 and an 88-character line length. CI installs Python 3.14 and uses uv with the committed lockfile. Run the checks from the repository root.
+Offline checks cover published Skyfield position and pass examples, altitude/speed bounds, orbit versus ground-track coordinates, ongoing passes, persistent cache/cooldown behaviour, API responses, observer validation/persistence and extended catalog IDs. Black handles formatting; Ruff checks Python errors, import ordering and missing parameter/return annotations. Both use Python 3.14 and an 88-character line length. CI installs Python 3.14 and uses uv with the committed lockfile. Run the checks from the repository root.
 
 ## Attribution
 

@@ -2,10 +2,15 @@ from datetime import datetime, timezone
 
 import pytest
 
+from app.models import Observer
+from app.schemas import OrbitalElements
+from app.tracking.propagation import Tracker
 from app.tracking.visibility import PassPredictor
 
 
-def test_pass_matches_published_rise_peak_set(tracker, record, observer):
+def test_pass_matches_published_rise_peak_set(
+    tracker: Tracker, record: OrbitalElements, observer: Observer
+) -> None:
     predictor = PassPredictor(tracker)
     start = datetime(2014, 1, 23, tzinfo=timezone.utc)
     result = predictor.predict(record, observer, hours=24, min_elevation=30, now=start)
@@ -25,7 +30,9 @@ def test_pass_matches_published_rise_peak_set(tracker, record, observer):
     assert "geometric" in first["visibility"]
 
 
-def test_ongoing_pass_retains_actual_rise(tracker, record, observer):
+def test_ongoing_pass_retains_actual_rise(
+    tracker: Tracker, record: OrbitalElements, observer: Observer
+) -> None:
     start = datetime(2014, 1, 23, 6, 26, 30, tzinfo=timezone.utc)
     first = PassPredictor(tracker).predict(
         record, observer, hours=3, min_elevation=30, now=start
@@ -34,7 +41,9 @@ def test_ongoing_pass_retains_actual_rise(tracker, record, observer):
     assert datetime.fromisoformat(first["rise_utc"].replace("Z", "+00:00")) < start
 
 
-def test_high_mask_can_return_no_passes(tracker, record, observer):
+def test_high_mask_can_return_no_passes(
+    tracker: Tracker, record: OrbitalElements, observer: Observer
+) -> None:
     result = PassPredictor(tracker).predict(
         record,
         observer,
@@ -45,7 +54,9 @@ def test_high_mask_can_return_no_passes(tracker, record, observer):
     assert result["passes"] == []
 
 
-def test_pass_rising_near_window_end_is_completed(tracker, record, observer):
+def test_pass_rising_near_window_end_is_completed(
+    tracker: Tracker, record: OrbitalElements, observer: Observer
+) -> None:
     # A one-hour window ends at 06:26:00, between rise and culmination.
     start = datetime(2014, 1, 23, 5, 26, tzinfo=timezone.utc)
     result = PassPredictor(tracker).predict(

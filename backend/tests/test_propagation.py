@@ -1,12 +1,19 @@
 import math
+from datetime import datetime
+from typing import cast
 
 import numpy as np
 import pytest
+from skyfield.positionlib import Geocentric
 
-from app.tracking.propagation import PropagationError
+from app.models import Observer
+from app.schemas import OrbitalElements
+from app.tracking.propagation import PropagationError, Tracker
 
 
-def test_matches_published_skyfield_position(tracker, record, instant, observer):
+def test_matches_published_skyfield_position(
+    tracker: Tracker, record: OrbitalElements, instant: datetime, observer: Observer
+) -> None:
     position = tracker.satellite(record).at(tracker.ts.from_datetime(instant))
     # https://rhodesmill.org/skyfield/earth-satellites.html
     np.testing.assert_allclose(
@@ -21,7 +28,9 @@ def test_matches_published_skyfield_position(tracker, record, instant, observer)
     assert not state["elements_stale"]
 
 
-def test_track_has_distinct_orbit_and_ground_path(tracker, record, instant):
+def test_track_has_distinct_orbit_and_ground_path(
+    tracker: Tracker, record: OrbitalElements, instant: datetime
+) -> None:
     track = tracker.track(record, 120, instant)
     assert len(track["orbit_ecef_km"]) == len(track["ground_track"]) == 120
     assert 5400 < track["period_seconds"] < 6000
@@ -35,7 +44,7 @@ def test_track_has_distinct_orbit_and_ground_path(tracker, record, instant):
     assert abs(frozen_longitude - track["ground_track"][-1]["longitude_deg"]) > 10
 
 
-def test_invalid_propagation_is_rejected(tracker):
+def test_invalid_propagation_is_rejected(tracker: Tracker) -> None:
     class BadPosition:
         message = "satellite has decayed"
 
@@ -43,4 +52,4 @@ def test_invalid_propagation_is_rejected(tracker):
             km = np.array([1.0, 2.0, 3.0])
 
     with pytest.raises(PropagationError):
-        tracker.check(BadPosition())
+        tracker.check(cast(Geocentric, BadPosition()))

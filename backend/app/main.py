@@ -1,28 +1,42 @@
 import os
 from pathlib import Path
 from threading import Lock
-from typing import Annotated, Literal
+from typing import Annotated, cast
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.models import Observer
+from app.schemas import (
+    Group,
+    ObserverData,
+    OrbitalElements,
+    OrbitTrack,
+    PassForecast,
+    SatelliteList,
+    SatellitePass,
+    SatelliteState,
+    SceneResponse,
+    StatusResponse,
+)
 from app.tracking.catalog import GROUPS, Catalog, CatalogUnavailable
 from app.tracking.propagation import PropagationError, Tracker, iso, utcnow
 from app.tracking.visibility import PassPredictor
 
-Group = Literal["stations", "starlink", "science", "gps-ops"]
 STATIC = Path(__file__).parent / "static"
 DEFAULT_DATA = Path(__file__).resolve().parents[2] / ".data"
 
 
-def create_app(data_dir=None, catalog=None):
+def create_app(
+    data_dir: str | Path | None = None, catalog: Catalog | None = None
+) -> FastAPI:
     directory = Path(data_dir or os.environ.get("SAT_TRACK_DATA_DIR", DEFAULT_DATA))
     directory.mkdir(parents=True, exist_ok=True)
     catalog = catalog or Catalog(directory / "catalog")
     tracker, observer_path, lock = Tracker(), directory / "observer.json", Lock()
-    predictor, observer = PassPredictor(tracker), None
+    predictor = PassPredictor(tracker)
+    observer: Observer | None = None
     if observer_path.exists():
         try:
             observer = Observer.model_validate_json(observer_path.read_text())
@@ -36,29 +50,31 @@ def create_app(data_dir=None, catalog=None):
     )
 
     @app.exception_handler(CatalogUnavailable)
-    async def catalog_error(request, exc):
+    async def catalog_error(request: Request, exc: CatalogUnavailable) -> JSONResponse:
         return JSONResponse(status_code=503, content={"detail": str(exc)})
 
     @app.exception_handler(PropagationError)
-    async def propagation_error(request, exc):
+    async def propagation_error(
+        request: Request, exc: PropagationError
+    ) -> JSONResponse:
         return JSONResponse(status_code=422, content={"detail": str(exc)})
 
-    def record_for(satellite_id, group):
+    def record_for(satellite_id: int, group: Group) -> OrbitalElements:
         try:
             return catalog.record(satellite_id, group)
         except KeyError:
             raise HTTPException(404, "Satellite is not in the selected group")
 
-    def current_observer():
+    def current_observer() -> Observer:
         with lock:
             return observer or Observer(
                 name="Unset (equator reference)", latitude_deg=0, longitude_deg=0
             )
 
     @app.get("/api/v1/status")
-    def status():
+    def status() -> StatusResponse:
         with lock:
-            saved = observer.model_dump() if observer else None
+            saved = cast(ObserverData, observer.model_dump()) if observer else None
         return {
             "status": "ok",
             "utc": iso(utcnow()),
@@ -72,7 +88,7 @@ def create_app(data_dir=None, catalog=None):
         }
 
     @app.post("/api/v1/observer")
-    def save_observer(value: Observer):
+    def save_observer(value: Observer) -> Observer:
         nonlocal observer
         with lock:
             temp = observer_path.with_suffix(".tmp")
@@ -81,17 +97,18 @@ def create_app(data_dir=None, catalog=None):
             observer = value
         return value
 
+    def catalog_order(record: OrbitalElements) -> tuple[bool, str]:
+        return int(record["NORAD_CAT_ID"]) != 25544, record["OBJECT_NAME"]
+
     @app.get("/api/v1/satellites")
     def satellites(
         group: Group = "stations",
         q: str = Query(default="", max_length=100),
         limit: int = Query(default=200, ge=1, le=1000),
         offset: int = Query(default=0, ge=0),
-    ):
+    ) -> SatelliteList:
         records = catalog.ensure(group)["records"]
-        records = sorted(
-            records, key=lambda r: (int(r["NORAD_CAT_ID"]) != 25544, r["OBJECT_NAME"])
-        )
+        records = sorted(records, key=catalog_order)
         if q:
             records = [
                 r
@@ -119,7 +136,7 @@ def create_app(data_dir=None, catalog=None):
         group: Group = "stations",
         selected_id: int = Query(default=25544, ge=1),
         limit: int = Query(default=12, ge=1, le=24),
-    ):
+    ) -> SceneResponse:
         records = catalog.ensure(group)["records"]
         selected = record_for(selected_id, group)
         stride = max(1, len(records) // max(1, limit - 1))
@@ -128,7 +145,8 @@ def create_app(data_dir=None, catalog=None):
             for r in records[::stride]
             if r["NORAD_CAT_ID"] != selected["NORAD_CAT_ID"]
         ][: limit - 1]
-        now, location, states = utcnow(), current_observer(), []
+        now, location = utcnow(), current_observer()
+        states: list[SatelliteState] = []
         for record in preview:
             try:
                 states.append(tracker.state(record, location, now))
@@ -143,7 +161,7 @@ def create_app(data_dir=None, catalog=None):
         }
 
     @app.get("/api/v1/satellites/{satellite_id}/state")
-    def state(satellite_id: int, group: Group = "stations"):
+    def state(satellite_id: int, group: Group = "stations") -> SatelliteState:
         return tracker.state(record_for(satellite_id, group), current_observer())
 
     @app.get("/api/v1/satellites/{satellite_id}/track")
@@ -151,7 +169,7 @@ def create_app(data_dir=None, catalog=None):
         satellite_id: int,
         group: Group = "stations",
         samples: int = Query(default=180, ge=24, le=360),
-    ):
+    ) -> OrbitTrack:
         return tracker.track(record_for(satellite_id, group), samples)
 
     @app.get("/api/v1/passes")
@@ -165,10 +183,10 @@ def create_app(data_dir=None, catalog=None):
         elevation_m: float = Query(default=0, ge=-500, le=9000, allow_inf_nan=False),
         hours: int = Query(default=48, ge=1, le=72),
         min_elevation: float = Query(default=10, ge=0, le=80),
-    ):
+    ) -> PassForecast:
         if (lat is None) != (lon is None):
             raise HTTPException(422, "Provide both lat and lon")
-        if lat is not None:
+        if lat is not None and lon is not None:
             location = Observer(
                 latitude_deg=lat, longitude_deg=lon, elevation_m=elevation_m
             )
@@ -183,14 +201,14 @@ def create_app(data_dir=None, catalog=None):
         )
 
     @app.get("/api/v1/passes/{pass_id}")
-    def pass_detail(pass_id: str):
+    def pass_detail(pass_id: str) -> SatellitePass:
         detail = predictor.detail(pass_id)
         if detail is None:
             raise HTTPException(404, "Pass not found; request the pass list first")
         return detail
 
     @app.get("/", include_in_schema=False)
-    def index():
+    def index() -> FileResponse:
         return FileResponse(STATIC / "index.html")
 
     app.mount("/static", StaticFiles(directory=STATIC), name="static")

@@ -1,16 +1,21 @@
 import json
+from pathlib import Path
 from time import time
+from typing import Never
 
 import httpx
 import pytest
 
+from app.schemas import OrbitalElements
 from app.tracking.catalog import REFRESH_SECONDS, Catalog, CatalogUnavailable
 
 
-def test_group_download_is_cached_on_disk_and_across_restart(tmp_path, record):
-    calls = []
+def test_group_download_is_cached_on_disk_and_across_restart(
+    tmp_path: Path, record: OrbitalElements
+) -> None:
+    calls: list[str] = []
 
-    def fetch(group):
+    def fetch(group: str) -> list[OrbitalElements]:
         calls.append(group)
         return [record]
 
@@ -21,12 +26,14 @@ def test_group_download_is_cached_on_disk_and_across_restart(tmp_path, record):
     assert calls == ["stations"]
 
 
-def test_failed_upstream_preserves_old_catalog_and_cools_down(tmp_path, record):
+def test_failed_upstream_preserves_old_catalog_and_cools_down(
+    tmp_path: Path, record: OrbitalElements
+) -> None:
     cached = {"fetched_at": time() - REFRESH_SECONDS - 1, "records": [record]}
     (tmp_path / "stations.json").write_text(json.dumps(cached))
-    calls = []
+    calls: list[str] = []
 
-    def offline(group):
+    def offline(group: str) -> Never:
         calls.append(group)
         raise httpx.ConnectError("offline")
 
@@ -38,10 +45,10 @@ def test_failed_upstream_preserves_old_catalog_and_cools_down(tmp_path, record):
     assert calls == ["stations"]
 
 
-def test_first_download_failure_does_not_fake_live_data(tmp_path):
-    calls = []
+def test_first_download_failure_does_not_fake_live_data(tmp_path: Path) -> None:
+    calls: list[str] = []
 
-    def blocked(group):
+    def blocked(group: str) -> Never:
         calls.append(group)
         raise httpx.HTTPStatusError(
             "403",
@@ -56,6 +63,9 @@ def test_first_download_failure_does_not_fake_live_data(tmp_path):
     assert calls == ["stations"]
 
 
-def test_invalid_payload_is_rejected(tmp_path):
+def test_invalid_payload_is_rejected(tmp_path: Path) -> None:
+    def invalid_payload(group: str) -> dict[str, str]:
+        return {"error": "bad response"}
+
     with pytest.raises(CatalogUnavailable):
-        Catalog(tmp_path, lambda _: {"error": "bad response"}).ensure("stations")
+        Catalog(tmp_path, invalid_payload).ensure("stations")
