@@ -1,0 +1,262 @@
+import adsk.core
+import adsk.fusion
+import math
+import os
+import json
+
+OUT = r'C:\Users\Ayman\.codex\visualizations\2026\10\11\01a12c1e-2027-7d32-b8a6-29affd470b6c\orbit-cad-revc'
+
+def run(_context: str):
+    app = adsk.core.Application.get()
+    doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
+    doc.name = 'ORBIT Desktop Terminal - Rev C integrated electronics'
+    design = adsk.fusion.Design.cast(app.activeProduct)
+    design.designType = adsk.fusion.DesignTypes.ParametricDesignType
+    design.unitsManager.distanceDisplayUnits = adsk.fusion.DistanceUnits.MillimeterDistanceUnits
+    root = design.rootComponent
+
+    V = adsk.core.ValueInput.createByReal
+    P = lambda x,y: adsk.core.Point3D.create(x/10,y/10,0)
+    NEW = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
+    CUT = adsk.fusion.FeatureOperations.CutFeatureOperation
+    JOIN = adsk.fusion.FeatureOperations.JoinFeatureOperation
+    printable = []
+    reference = []
+
+    def comp(name, print_part=True):
+        c = root.occurrences.addNewComponent(adsk.core.Matrix3D.create()).component
+        c.name = name
+        (printable if print_part else reference).append(c)
+        return c
+
+    def sketch(c,z,name):
+        pi=c.constructionPlanes.createInput()
+        pi.setByOffset(c.xYConstructionPlane,V(z/10))
+        pl=c.constructionPlanes.add(pi)
+        pl.isLightBulbOn=False
+        s=c.sketches.add(pl)
+        s.name=name
+        return s
+
+    def extrude(c,s,depth,op,name):
+        if s.profiles.count != 1:
+            raise RuntimeError(name + ': expected one closed profile, got ' + str(s.profiles.count))
+        i=c.features.extrudeFeatures.createInput(s.profiles.item(0),op)
+        extent=adsk.fusion.DistanceExtentDefinition.create(V(abs(depth)/10))
+        direction=adsk.fusion.ExtentDirections.PositiveExtentDirection if depth>0 else adsk.fusion.ExtentDirections.NegativeExtentDirection
+        i.setOneSideExtent(extent,direction)
+        f=c.features.extrudeFeatures.add(i)
+        f.name=name
+        s.isLightBulbOn=False
+        return f
+
+    def box(c,x,y,z,w,h,d,name,op=NEW):
+        s=sketch(c,z,name)
+        s.sketchCurves.sketchLines.addTwoPointRectangle(P(x,y),P(x+w,y+h))
+        return extrude(c,s,d,op,name)
+
+    def rounded(c,x,y,z,w,h,r,d,name,op=NEW):
+        s=sketch(c,z,name)
+        lines=s.sketchCurves.sketchLines
+        arcs=s.sketchCurves.sketchArcs
+        lines.addByTwoPoints(P(x+r,y),P(x+w-r,y))
+        arcs.addByCenterStartSweep(P(x+w-r,y+r),P(x+w-r,y),math.pi/2)
+        lines.addByTwoPoints(P(x+w,y+r),P(x+w,y+h-r))
+        arcs.addByCenterStartSweep(P(x+w-r,y+h-r),P(x+w,y+h-r),math.pi/2)
+        lines.addByTwoPoints(P(x+w-r,y+h),P(x+r,y+h))
+        arcs.addByCenterStartSweep(P(x+r,y+h-r),P(x+r,y+h),math.pi/2)
+        lines.addByTwoPoints(P(x,y+h-r),P(x,y+r))
+        arcs.addByCenterStartSweep(P(x+r,y+r),P(x,y+r),math.pi/2)
+        return extrude(c,s,d,op,name)
+
+    def circle(c,x,y,z,r,d,name,op=NEW):
+        s=sketch(c,z,name)
+        s.sketchCurves.sketchCircles.addByCenterRadius(P(x,y),r/10)
+        return extrude(c,s,d,op,name)
+
+    front=comp('01 Ivory front panel')
+    rounded(front,0,0,0,135,175,6,3,'Front panel 3mm')
+    rounded(front,31.5,85,0,72,72,1,3,'Display aperture - provisional',CUT)
+    for x,y,r,label in [(36,36,3.7,'Encoder'),(99,36,3.7,'Potentiometer'),(18,70,3.2,'Hold toggle'),(117,70,3.2,'Grid toggle')]:
+        circle(front,x,y,0,r,3,label+' clearance',CUT)
+    rounded(front,50.5,16,0,34,2.4,1,0.8,'Decorative disk slot recess',CUT)
+    corners=[(5,5),(130,5),(5,170),(130,170)]
+    for x,y in corners:
+        circle(front,x,y,0,1.7,3,'M3 front screw',CUT)
+
+    shell=comp('02 Ivory shell')
+    rounded(shell,0,0,3,135,175,6,89,'Shell exterior')
+    rounded(shell,2.4,2.4,3,130.2,170.2,3.6,89,'Open cavity 2.4mm walls',CUT)
+    for x,y in corners:
+        for z in [3,84]:
+            circle(shell,x,y,z,4,8,'M3 corner boss',JOIN)
+            circle(shell,x,y,z,1.7,8,'M3 boss bore',CUT)
+    # Front holes and rear holes accept screws with nuts accessed from cavity.
+
+    rear=comp('03 Ivory rear cover')
+    rounded(rear,0,0,92,135,175,6,3,'Rear cover')
+    for x,y in corners:
+        circle(rear,x,y,92,1.7,3,'M3 rear screw',CUT)
+    rounded(rear,50.5,12,92,34,18,2,3,'USB service opening - adapter required',CUT)
+    for x in range(35,106,10):
+        rounded(rear,x,145,92,3,15,1,3,'Rear vent',CUT)
+
+    bezel=comp('04 Charcoal bezel')
+    rounded(bezel,27.5,81,-2,80,80,4,2,'Inset display bezel')
+    rounded(bezel,31.5,85,-2,72,72,1,2,'Bezel view opening',CUT)
+    # Alignment pegs register bezel to front; glue after fit check.
+    for x,y in [(29.5,83),(105.5,159)]:
+        circle(bezel,x,y,0,0.9,2,'Bezel locating peg',JOIN)
+        circle(front,x,y,0,1.1,2.2,'Bezel locating socket',CUT)
+
+    tray=comp('05 Internal removable control tray')
+    rounded(tray,12.5,10,55,110,70,3,3,'Tray installed below screen')
+    for x in [17.5,117.5]:
+        for y in [20,70]:
+            circle(tray,x,y,55,1.7,3,'M3 tray fixing',CUT)
+            bx=1 if x<60 else 111
+            box(shell,bx,y-6,48,23,12,7,'Tray support ledge',JOIN)
+            circle(shell,x,y,50,2.2,5,'M3 heat insert pilot - calibrate',CUT)
+    # Generic slotted mounting, not guessed board hole centres.
+    for x,y,w in [(28,25,43),(28,41,43),(82,25,27),(82,41,27),(29,54,72),(29,70,72)]:
+        rounded(tray,x,y,55,w,3,1.4,3,'Adjustable breakout fixing slot',CUT)
+
+    retainer=comp('06 Display rear retainer - fit prototype')
+    rounded(retainer,21,75,17,93,92,4,3,'Display retaining frame')
+    rounded(retainer,30.5,84,17,74,74,2,3,'Rear service window',CUT)
+    box(retainer,51,158,17,33,9,3,'Antenna and cable relief',CUT)
+    for x in [26,109]:
+        for y in [80,162]:
+            circle(retainer,x,y,17,1.7,3,'M3 retainer fixing',CUT)
+            circle(front,x,y,3,4,14,'Display retainer stand off',JOIN)
+            circle(front,x,y,12,2.2,5,'M3 heat insert pilot - calibrate',CUT)
+    # PCB-edge pads and soft gasket support the module, never the active glass.
+    for x in [27.6,106.2]:
+        box(front,x,90,3,1.3,60,2,'Display side support',JOIN)
+
+    # Physical hardware references are not exported as printable parts.
+    screen=comp('REF Green TFT visible area',False)
+    rounded(screen,31,84.5,3.6,73,73,1,1,'Green screen proxy')
+    for x,name in [(36,'REF Select knob'),(99,'REF Zoom knob')]:
+        c=comp(name,False)
+        circle(c,x,36,-16,11,13,'Purchased knob envelope')
+        box(c,x-0.7,44,-16.1,1.4,2.5,0.2,'Pointer mark')
+    for x,name in [(18,'REF HOLD toggle'),(117,'REF GRID toggle')]:
+        c=comp(name,False)
+        circle(c,x,70,-2,4,2,'Toggle washer')
+        circle(c,x,70,-15,1.5,13,'Metal toggle lever envelope')
+
+    board=comp('REF Waveshare module 76.54 x 74.66 - thickness provisional',False)
+    box(board,29.23,83.67,5,76.54,74.66,1.6,'Display controller PCB envelope')
+    box(board,42,100,6.6,33,27,6.4,'ESP32 and component clearance - illustrative')
+    box(board,87,94,6.6,18,14,7.4,'External connector clearance - verify board')
+    box(board,35,148,6.6,18,9,5,'WiFi antenna keep clear - location provisional')
+
+    # Real board footprints; holes and component locations are illustrative.
+    seesaw=comp('E01 Seesaw 4991 behind SELECT encoder',False)
+    box(seesaw,23.2,23.35,20,25.6,25.3,1.6,'4991 published PCB outline')
+    box(seesaw,27,27,21.6,8,8,3,'Seesaw component envelope')
+    encoder=comp('E02 Panel encoder body',False)
+    box(encoder,29.5,29.5,3,13,13,17,'Encoder body envelope - select actual part')
+    pot=comp('E03 B10K potentiometer body',False)
+    circle(pot,99,36,3,8.5,17,'Pot body envelope - select actual part')
+    for x,label in [(18,'E04 HOLD switch body'),(117,'E05 GRID switch body')]:
+        c=comp(label,False)
+        box(c,x-5,64,3,10,12,17,'Panel toggle body envelope')
+
+    mcp=comp('E06 MCP23017 5346 on removable tray',False)
+    box(mcp,28,24,64,43,18,1.6,'5346 published PCB outline')
+    box(mcp,38,29,65.6,12,8,3.4,'MCP component envelope')
+    adc=comp('E07 ADS1115 1085 on removable tray',False)
+    box(adc,82,24,64,25.4,17.8,1.6,'1085 published PCB outline')
+    box(adc,91,29,65.6,6,6,3,'ADC component envelope')
+    terminal=comp('E08 Harness terminal perfboard',False)
+    box(terminal,29,53,64,72,20,1.6,'Cut-to-size perfboard')
+    box(terminal,35,58,65.6,55,10,8,'Detachable harness terminals')
+    # Removable M2.5 mounting screws and nylon spacer stand-offs (generic centres).
+    spacers=comp('H01 Nylon 6mm board spacers - adjust to holes',False)
+    for x,y in [(30,26.5),(68.5,39.5),(84,26.5),(104.9,39.5),(32,56),(98,70)]:
+        circle(spacers,x,y,58,2.4,6,'Nylon board spacer')
+    mounting=comp('H02 Tray M3 screws and heat inserts',False)
+    for x in [17.5,117.5]:
+        for y in [20,70]:
+            circle(mounting,x,y,50,2.15,5,'M3 brass heat insert envelope')
+            circle(mounting,x,y,52,1.5,6,'M3 screw shaft')
+            circle(mounting,x,y,58,2.7,2,'M3 screw head')
+
+    # Simplified route envelopes, not an electrical wire-length or bend-radius model.
+    i2c=comp('W01 Four-wire I2C route envelope - blue',False)
+    box(i2c,112,25,35,3,86,3,'Vertical harness corridor')
+    box(i2c,101,106,35,11,3,3,'Display I2C branch')
+    box(i2c,107,33,35,5,3,29,'Tray harness branch')
+    box(i2c,46,43,25,66,3,3,'Encoder harness branch')
+    usb=comp('W02 USB power route envelope - orange',False)
+    box(usb,102,113,16,4,4,58,'Display USB service loop corridor')
+    box(usb,67,21,74,39,4,4,'USB rear route horizontal')
+    box(usb,102,25,74,4,88,4,'USB rear route vertical')
+    box(usb,64.5,18,78,6,6,14,'Rear USB extension route')
+    usbport=comp('E09 Panel USB extension - generic envelope',False)
+    box(usbport,52,13.5,83,31,15,9,'Bolted USB extension envelope - verify chosen part')
+
+
+    # Colour copies: visible physical palette, no downloaded appearances.
+    lib=app.materialLibraries.itemByName('Fusion Appearance Library')
+    base=lib.appearances.itemByName('Plastic - Matte (White)') if lib else None
+    if base:
+        for name,color,components in [('Ivory PLA',(232,222,198,255),[front,shell,rear]),('Charcoal PLA',(40,43,40,255),[bezel,tray,retainer]),('Green phosphor',(30,180,65,255),[screen]),('Dark knobs',(30,32,29,255),[reference[1],reference[2]]),('Metal switches',(145,145,140,255),[reference[3],reference[4]])]:
+            a=design.appearances.addByCopy(base,name)
+            prop=adsk.core.ColorProperty.cast(a.appearanceProperties.itemById('opaque_albedo'))
+            if prop: prop.value=adsk.core.Color.create(*color)
+            for c in components:
+                for body in c.bRepBodies: body.appearance=a
+
+    if base:
+        for name,color,components in [('Green PCBs',(20,100,62,255),[board,seesaw,mcp,adc,terminal]),('Control bodies',(80,85,80,255),[encoder,pot]),('Nylon spacers',(215,210,185,255),[spacers]),('Mount screws',(165,152,100,255),[mounting]),('I2C harness',(45,115,230,255),[i2c]),('USB harness',(220,115,35,255),[usb,usbport])]:
+            ap=design.appearances.addByCopy(base,name)
+            cp=adsk.core.ColorProperty.cast(ap.appearanceProperties.itemById('opaque_albedo'))
+            if cp: cp.value=adsk.core.Color.create(*color)
+            for c in components:
+                for body in c.bRepBodies: body.appearance=ap
+
+    issues=[]
+    for i in range(design.timeline.count):
+        t=design.timeline.item(i)
+        if t.healthState != adsk.fusion.FeatureHealthStates.HealthyFeatureHealthState:
+            issues.append({'feature':t.name,'warning':t.errorOrWarningMessage})
+    if issues: raise RuntimeError(json.dumps(issues))
+    for c in printable:
+        if c.bRepBodies.count != 1: raise RuntimeError(c.name+' has '+str(c.bRepBodies.count)+' bodies')
+        if not c.bRepBodies.item(0).isSolid: raise RuntimeError(c.name+' is not solid')
+
+    camera=app.activeViewport.camera
+    camera.isFitView=False
+    camera.eye=adsk.core.Point3D.create(22,20,-28)
+    camera.target=adsk.core.Point3D.create(8,7.5,4)
+    camera.upVector=adsk.core.Vector3D.create(0,1,0)
+    camera.cameraType=adsk.core.CameraTypes.OrthographicCameraType
+    app.activeViewport.camera=camera
+    app.activeViewport.fit()
+    os.makedirs(OUT,exist_ok=True)
+    manager=design.exportManager
+    assert manager.execute(manager.createFusionArchiveExportOptions(os.path.join(OUT,'ORBIT-RevC.f3d')))
+    assert manager.execute(manager.createSTEPExportOptions(os.path.join(OUT,'ORBIT-RevC-assembly.step')))
+    for c in printable:
+        slug=c.name.replace(' ','-')
+        assert manager.execute(manager.createSTEPExportOptions(os.path.join(OUT,slug+'.step'),c))
+        stl=manager.createSTLExportOptions(c,os.path.join(OUT,slug+'.stl'))
+        stl.meshRefinement=adsk.fusion.MeshRefinementSettings.MeshRefinementHigh
+        assert manager.execute(stl)
+    assert app.activeViewport.saveAsImageFile(os.path.join(OUT,'ORBIT-RevC.png'),1400,1000)
+    rear.bRepBodies.item(0).isLightBulbOn=False
+    shell.bRepBodies.item(0).isLightBulbOn=False
+    camera=app.activeViewport.camera
+    camera.eye=adsk.core.Point3D.create(23,18,32)
+    camera.target=adsk.core.Point3D.create(6.75,8.75,4)
+    camera.upVector=adsk.core.Vector3D.create(0,1,0)
+    app.activeViewport.camera=camera
+    app.activeViewport.fit()
+    assert app.activeViewport.saveAsImageFile(os.path.join(OUT,'ORBIT-RevC-internals.png'),1600,1200)
+    assert manager.execute(manager.createFusionArchiveExportOptions(os.path.join(OUT,'ORBIT-RevC-inspection.f3d')))
+    report={'document' :doc.name,'printable_components':[{'name':c.name,'bodies':c.bRepBodies.count,'volume_cm3':c.bRepBodies.item(0).volume} for c in printable],'timeline_features':design.timeline.count,'issues':issues,'output':OUT,'limitations':['72mm aperture and screen mount must be checked against purchased non-touch board revision','Mount insert pilots, board slots and retainer gasket require fit calibration','Knobs and toggles are reference envelopes, not printable hardware','Not physically fit tested']}
+    with open(os.path.join(OUT,'validation.json'),'w') as f: json.dump(report,f,indent=2)
+    print(json.dumps(report))

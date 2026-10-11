@@ -1,0 +1,71 @@
+import adsk.core, adsk.fusion, os, json
+OUT=r'C:\Users\Ayman\.codex\visualizations\2026\10\11\01a12c1e-2027-7d32-b8a6-29affd470b6c\orbit-cad-revd'
+
+def run(_context: str):
+    app=adsk.core.Application.get(); d=adsk.fusion.Design.cast(app.activeProduct); root=d.rootComponent
+    assert app.activeDocument.name=='ORBIT Desktop Terminal - Rev D rechargeable battery'
+    names={o.component.name:o.component for o in root.occurrences}
+    assert '08 Removable battery cradle' not in names
+    rear=names['03 Ivory rear cover']; shell=names['02 Ivory shell']
+    V=adsk.core.ValueInput.createByReal
+    NEW=adsk.fusion.FeatureOperations.NewBodyFeatureOperation; JOIN=adsk.fusion.FeatureOperations.JoinFeatureOperation; CUT=adsk.fusion.FeatureOperations.CutFeatureOperation
+    def comp(name):
+        c=root.occurrences.addNewComponent(adsk.core.Matrix3D.create()).component; c.name=name; return c
+    def sketch(c,z):
+        i=c.constructionPlanes.createInput(); i.setByOffset(c.xYConstructionPlane,V(z/10)); pl=c.constructionPlanes.add(i); pl.isLightBulbOn=False; return c.sketches.add(pl)
+    def extrude(c,s,depth,op,name):
+        assert s.profiles.count==1
+        i=c.features.extrudeFeatures.createInput(s.profiles.item(0),op); i.setOneSideExtent(adsk.fusion.DistanceExtentDefinition.create(V(depth/10)),adsk.fusion.ExtentDirections.PositiveExtentDirection)
+        f=c.features.extrudeFeatures.add(i); f.name=name; s.isLightBulbOn=False; return f
+    def box(c,x,y,z,w,h,depth,name,op=NEW):
+        s=sketch(c,z); s.sketchCurves.sketchLines.addTwoPointRectangle(adsk.core.Point3D.create(x/10,y/10,0),adsk.core.Point3D.create((x+w)/10,(y+h)/10,0)); return extrude(c,s,depth,op,name)
+    def circle(c,x,y,z,r,depth,name,op=NEW):
+        s=sketch(c,z); s.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(x/10,y/10,0),r/10); return extrude(c,s,depth,op,name)
+    cradle=comp('08 Removable battery cradle')
+    box(cradle,16,91,88,85,51,2,'Battery cradle backplate')
+    for x in [16,98]: box(cradle,x,99,66,3,34,22,'Pack end guard',JOIN)
+    for y in [91,139]: box(cradle,26,y,66,67,3,22,'Pack edge guard',JOIN)
+    for y in [95,136]: box(cradle,52,y,88,12,3,2,'Soft retention strap slot',CUT)
+    for x in [19,98]:
+        for y in [94,139]:
+            circle(cradle,x,y,88,1.7,2,'M3 cradle through hole',CUT)
+            circle(rear,x,y,90,3.5,2,'Battery cradle rear-cover spacer',JOIN)
+            circle(rear,x,y,90,1.7,5,'M3 cradle through fixing',CUT)
+    # A small rear momentary button operates the board power key, not the battery current.
+    circle(rear,117,112,92,6.1,3,'12mm momentary power key clearance - verify bushing',CUT)
+    pack=comp('E10 Protected 1S 4400mAh battery - Adafruit 354 envelope')
+    box(pack,24,98.5,69,69,37,18,'69x37x18mm purchased pack envelope')
+    button=comp('E11 Rear momentary power key - generic 12mm')
+    circle(button,117,112,80,7,12,'Power key body clearance')
+    circle(button,117,112,92,6,3,'Power key threaded bushing')
+    circle(button,117,112,95,7,3,'Power key head')
+    route=comp('W03 Battery lead route - connector position provisional')
+    box(route,21,117,48,3,3,21,'Battery lead slack corridor')
+    box(route,21,117,24,3,3,24,'Battery lead toward display')
+    box(route,21,117,21,16,3,3,'Battery connector branch - verify actual location')
+    foam=comp('H03 Soft battery pad and hook-loop strap - purchased')
+    box(foam,26,100,87,65,34,1,'1mm soft insulating pad')
+    box(foam,53,98,67.5,10,38,1,'10mm hook-loop retention strap envelope')
+    for y in [97,136]:box(foam,53,y,68,10,1,23,'Retention strap wrap envelope')
+    box(foam,53,97,90,10,40,1,'Retention strap rear return')
+    charcoal=d.appearances.itemByName('Charcoal PLA')
+    if charcoal:cradle.bRepBodies.item(0).appearance=charcoal
+    base=d.appearances.itemByName('Green PCBs')
+    if base:
+        for name,color,components in [('Battery blue',(35,85,175,255),[pack]),('Battery harness red',(195,45,40,255),[route]),('Battery soft retention',(100,100,95,255),[foam])]:
+            a=d.appearances.addByCopy(base,name); p=adsk.core.ColorProperty.cast(a.appearanceProperties.itemById('opaque_albedo'))
+            if p:p.value=adsk.core.Color.create(*color)
+            for c in components:
+                for b in c.bRepBodies:b.appearance=a
+    if charcoal:
+        for b in button.bRepBodies:b.appearance=charcoal
+    for c in [rear,shell]:
+        for b in c.bRepBodies:b.isLightBulbOn=True
+    issues=[]
+    for i in range(d.timeline.count):
+        t=d.timeline.item(i)
+        if t.healthState!=adsk.fusion.FeatureHealthStates.HealthyFeatureHealthState:issues.append(t.errorOrWarningMessage)
+    assert not issues,str(issues)
+    assert cradle.bRepBodies.count==1 and cradle.bRepBodies.item(0).isSolid
+    os.makedirs(OUT,exist_ok=True)
+    print(json.dumps({'document':app.activeDocument.name,'features':d.timeline.count,'issues':issues,'battery_mm':[69,37,18],'cradle_mm':[85,51,24],'new_printable_parts':1,'modified_parts':['03 Ivory rear cover']}))

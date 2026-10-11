@@ -1,0 +1,54 @@
+import adsk.core, adsk.fusion, os, json
+OUT=r'C:\Users\Ayman\.codex\visualizations\2026\10\11\01a12c1e-2027-7d32-b8a6-29affd470b6c\orbit-cad-revc'
+
+def run(_context: str):
+    app=adsk.core.Application.get();d=adsk.fusion.Design.cast(app.activeProduct);r=d.rootComponent
+    byname={o.component.name:o.component for o in r.occurrences}
+    front=byname['01 Ivory front panel'];rear=byname['03 Ivory rear cover'];ret=byname['06 Display rear retainer - fit prototype']
+    rear.bRepBodies.item(0).isLightBulbOn=True
+    v=adsk.core.ValueInput.createByReal
+    def sk(c,z):
+        p=c.constructionPlanes.createInput();p.setByOffset(c.xYConstructionPlane,v(z/10));plane=c.constructionPlanes.add(p);plane.isLightBulbOn=False
+        return c.sketches.add(plane)
+    def ext(c,s,depth,op,name):
+        i=c.features.extrudeFeatures.createInput(s.profiles.item(0),op)
+        i.setOneSideExtent(adsk.fusion.DistanceExtentDefinition.create(v(depth/10)),adsk.fusion.ExtentDirections.PositiveExtentDirection)
+        f=c.features.extrudeFeatures.add(i);f.name=name;s.isLightBulbOn=False;return f
+    def box(c,x,y,z,w,h,depth,op,name):
+        s=sk(c,z);s.sketchCurves.sketchLines.addTwoPointRectangle(adsk.core.Point3D.create(x/10,y/10,0),adsk.core.Point3D.create((x+w)/10,(y+h)/10,0));return ext(c,s,depth,op,name)
+    def hole(c,x,y,z,rad,depth):
+        s=sk(c,z);s.sketchCurves.sketchCircles.addByCenterRadius(adsk.core.Point3D.create(x/10,y/10,0),rad/10)
+        return ext(c,s,depth,adsk.fusion.FeatureOperations.CutFeatureOperation,'Adapter fixing')
+    join=adsk.fusion.FeatureOperations.JoinFeatureOperation
+    for x in [29.5,104.5]:
+        box(front,x,96,3,1,20,2,join,'PCB edge seating pad - verify glass offset')
+        box(ret,x,96,7.1,1,20,9.9,join,'PCB rear pressure pad - 0.5mm soft gasket gap')
+    c=r.occurrences.addNewComponent(adsk.core.Matrix3D.create()).component;c.name='07 Replaceable USB adapter - generic 24mm flange pitch'
+    box(c,43,8,95,49,26,2,adsk.fusion.FeatureOperations.NewBodyFeatureOperation,'USB adapter plate')
+    box(c,59.5,16.5,95,16,9,2,adsk.fusion.FeatureOperations.CutFeatureOperation,'USB connector opening - verify selected extension')
+    for x in [47.5,87.5]:
+        hole(c,x,21,95,1.7,2);hole(rear,x,21,92,1.7,3)
+    for x in [55.5,79.5]:hole(c,x,21,95,1.4,2)
+    a=d.appearances.itemByName('Charcoal PLA')
+    if a:c.bRepBodies.item(0).appearance=a
+    health=[]
+    for i in range(d.timeline.count):
+        f=d.timeline.item(i)
+        if f.healthState!=adsk.fusion.FeatureHealthStates.HealthyFeatureHealthState:health.append(f.errorOrWarningMessage)
+    if health:raise RuntimeError(str(health))
+    # Restore shell for assembled exports, then leave a useful internal inspection view.
+    byname['02 Ivory shell'].bRepBodies.item(0).isLightBulbOn=True
+    rear.bRepBodies.item(0).isLightBulbOn=True
+    m=d.exportManager
+    assert m.execute(m.createFusionArchiveExportOptions(os.path.join(OUT,'ORBIT-RevC.f3d')))
+    assert m.execute(m.createSTEPExportOptions(os.path.join(OUT,'ORBIT-RevC-assembly.step')))
+    for part in [front,rear,ret,c]:
+        slug=part.name.replace(' ','-')
+        assert m.execute(m.createSTEPExportOptions(os.path.join(OUT,slug+'.step'),part))
+        opt=m.createSTLExportOptions(part,os.path.join(OUT,slug+'.stl'));opt.meshRefinement=adsk.fusion.MeshRefinementSettings.MeshRefinementHigh
+        assert m.execute(opt)
+    byname['02 Ivory shell'].bRepBodies.item(0).isLightBulbOn=False
+    rear.bRepBodies.item(0).isLightBulbOn=False
+    assert app.activeViewport.saveAsImageFile(os.path.join(OUT,'ORBIT-RevC-internals.png'),1600,1200)
+    assert m.execute(m.createFusionArchiveExportOptions(os.path.join(OUT,'ORBIT-RevC-inspection.f3d')))
+    print(json.dumps({'document':app.activeDocument.name,'features':d.timeline.count,'health':health,'USB_adapter':'generic: 16x9mm cutout, 24mm flange pitch; confirm purchased part','PCB_support':'edge pads with 0.5mm gasket clearance; verify module thickness'}))

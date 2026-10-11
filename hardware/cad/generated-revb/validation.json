@@ -1,0 +1,39 @@
+{
+  "document": "ORBIT Desktop Terminal - Rev B 4-inch",
+  "printable_components": [
+    {
+      "name": "01 Ivory front panel",
+      "bodies": 1,
+      "volume_cm3": 54.59152780878739
+    },
+    {
+      "name": "02 Ivory shell",
+      "bodies": 1,
+      "volume_cm3": 130.32942229834205
+    },
+    {
+      "name": "03 Ivory rear cover",
+      "bodies": 1,
+      "volume_cm3": 67.78824423783209
+    },
+    {
+      "name": "04 Charcoal bezel",
+      "bodies": 1,
+      "volume_cm3": 2.4062477796076975
+    },
+    {
+      "name": "05 Charcoal board tray - loose prototype",
+      "bodies": 1,
+      "volume_cm3": 26.48351044046114
+    }
+  ],
+  "timeline_features": 197,
+  "issues": [],
+  "output": "C:\\Users\\Ayman\\.codex\\visualizations\\2026\\10\\11\\01a12c1e-2027-7d32-b8a6-29affd470b6c\\orbit-cad-revb",
+  "limitations": [
+    "72mm aperture and screen mount must be checked against purchased non-touch board revision",
+    "Tray mounts to shell not yet designed",
+    "Knobs and toggles are reference envelopes, not printable hardware",
+    "Not physically fit tested"
+  ]
+}

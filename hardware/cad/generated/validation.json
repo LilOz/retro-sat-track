@@ -1,0 +1,39 @@
+{
+  "document": "ORBIT Desktop Terminal - Rev A refined",
+  "printable_components": [
+    {
+      "name": "01 Ivory front panel",
+      "bodies": 1,
+      "volume_cm3": 45.612527808787405
+    },
+    {
+      "name": "02 Ivory shell",
+      "bodies": 1,
+      "volume_cm3": 113.24142229834192
+    },
+    {
+      "name": "03 Ivory rear cover",
+      "bodies": 1,
+      "volume_cm3": 51.04566901579283
+    },
+    {
+      "name": "04 Charcoal bezel",
+      "bodies": 1,
+      "volume_cm3": 1.734247779607694
+    },
+    {
+      "name": "05 Charcoal board tray - loose prototype",
+      "bodies": 1,
+      "volume_cm3": 18.41351044046114
+    }
+  ],
+  "timeline_features": 190,
+  "issues": [],
+  "output": "C:\\Users\\Ayman\\.codex\\visualizations\\2026\\10\\11\\01a12c1e-2027-7d32-b8a6-29affd470b6c\\orbit-cad",
+  "limitations": [
+    "Exact screen mount and USB adapter pending purchased-part dimensions",
+    "Tray mounts to shell not yet designed",
+    "Knobs and toggles are reference envelopes, not printable hardware",
+    "Not physically fit tested"
+  ]
+}

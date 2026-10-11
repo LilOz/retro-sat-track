@@ -1,0 +1,85 @@
+{
+  "document": "ORBIT Desktop Terminal - Rev C integrated electronics",
+  "timeline_features": 473,
+  "issues": [],
+  "output": "C:\\Users\\Ayman\\.codex\\visualizations\\2026\\10\\11\\01a12c1e-2027-7d32-b8a6-29affd470b6c\\orbit-cad-revc",
+  "limitations": [
+    "Manufacturer outlines with illustrative components, mounting holes and connector locations",
+    "Module thickness, gasket/retainer depth, insert fit and USB extension flange must be confirmed",
+    "No physical fit or electrical/firmware validation"
+  ],
+  "printable_meshes": [
+    {
+      "file": "01-Ivory-front-panel.stl",
+      "triangles": 3168,
+      "nonmanifold_edges": 0,
+      "size_mm": [
+        135.0,
+        175.0,
+        17.0
+      ]
+    },
+    {
+      "file": "02-Ivory-shell.stl",
+      "triangles": 3840,
+      "nonmanifold_edges": 0,
+      "size_mm": [
+        135.0,
+        175.0,
+        89.0
+      ]
+    },
+    {
+      "file": "03-Ivory-rear-cover.stl",
+      "triangles": 2520,
+      "nonmanifold_edges": 0,
+      "size_mm": [
+        135.0,
+        175.0,
+        3.0
+      ]
+    },
+    {
+      "file": "04-Charcoal-bezel.stl",
+      "triangles": 320,
+      "nonmanifold_edges": 0,
+      "size_mm": [
+        80.0,
+        80.0,
+        2.0
+      ]
+    },
+    {
+      "file": "05-Internal-removable-control-tray.stl",
+      "triangles": 1732,
+      "nonmanifold_edges": 0,
+      "size_mm": [
+        110.0,
+        70.0,
+        3.0
+      ]
+    },
+    {
+      "file": "06-Display-rear-retainer---fit-prototype.stl",
+      "triangles": 956,
+      "nonmanifold_edges": 0,
+      "size_mm": [
+        93.0,
+        92.0,
+        12.9
+      ]
+    },
+    {
+      "file": "07-Replaceable-USB-adapter---generic-24mm-flange-pitch.stl",
+      "triangles": 624,
+      "nonmanifold_edges": 0,
+      "size_mm": [
+        49.0,
+        26.0,
+        2.0
+      ]
+    }
+  ],
+  "printable_component_count": 7,
+  "visibility_note": "ORBIT-RevC.f3d shows full enclosure. Inspection archive hides shell/rear without deleting them."
+}

@@ -1,0 +1,46 @@
+import adsk.core, adsk.fusion, os, json
+OUT=r'C:\Users\Ayman\.codex\visualizations\2026\10\11\01a12c1e-2027-7d32-b8a6-29affd470b6c\orbit-cad-revd'
+
+def run(_context: str):
+    app=adsk.core.Application.get(); d=adsk.fusion.Design.cast(app.activeProduct); root=d.rootComponent
+    assert app.activeDocument.name=='ORBIT Desktop Terminal - Rev D rechargeable battery'
+    occ={o.component.name:o for o in root.occurrences}
+    targets=['08 Removable battery cradle','E10 Protected 1S 4400mAh battery - Adafruit 354 envelope','E11 Rear momentary power key - generic 12mm']
+    collisions=[]
+    for name in targets:
+        a=occ[name]
+        for other,b in occ.items():
+            if other==name or other.startswith(('W03','H03')):continue
+            # Narrow phase only when component bounding boxes overlap with positive volume.
+            p=a.boundingBox;q=b.boundingBox
+            if all(min(getattr(p.maxPoint,k),getattr(q.maxPoint,k))-max(getattr(p.minPoint,k),getattr(q.minPoint,k))>0.0001 for k in ['x','y','z']):
+                objects=adsk.core.ObjectCollection.create();objects.add(a);objects.add(b)
+                results=d.analyzeInterference(d.createInterferenceInput(objects))
+                if results and results.count:collisions.append({'a':name,'b':other,'count':results.count})
+    assert not collisions,json.dumps(collisions)
+    printable=[o.component for name,o in occ.items() if name[:2].isdigit()]
+    for c in printable:assert c.bRepBodies.count==1 and c.bRepBodies.item(0).isSolid,c.name
+    m=d.exportManager;os.makedirs(OUT,exist_ok=True)
+    for c in printable:
+        slug=c.name.replace(' ','-')
+        assert m.execute(m.createSTEPExportOptions(os.path.join(OUT,slug+'.step'),c))
+        opt=m.createSTLExportOptions(c,os.path.join(OUT,slug+'.stl'));opt.meshRefinement=adsk.fusion.MeshRefinementSettings.MeshRefinementHigh
+        assert m.execute(opt)
+    shell=occ['02 Ivory shell'];rear=occ['03 Ivory rear cover']
+    def visible(o,value):
+        o.isLightBulbOn=value
+        for b in o.component.bRepBodies:b.isLightBulbOn=value
+    visible(shell,False);visible(rear,False)
+    camera=app.activeViewport.camera;camera.eye=adsk.core.Point3D.create(23,18,32);camera.target=adsk.core.Point3D.create(6.75,8.75,4);camera.upVector=adsk.core.Vector3D.create(0,1,0);app.activeViewport.camera=camera;app.activeViewport.fit()
+    assert app.activeViewport.saveAsImageFile(os.path.join(OUT,'ORBIT-RevD-internals.png'),1600,1200)
+    assert m.execute(m.createFusionArchiveExportOptions(os.path.join(OUT,'ORBIT-RevD-inspection.f3d')))
+    visible(shell,True);visible(rear,True)
+    camera=app.activeViewport.camera;camera.eye=adsk.core.Point3D.create(22,20,-28);camera.target=adsk.core.Point3D.create(6.75,8.75,4);camera.upVector=adsk.core.Vector3D.create(0,1,0);app.activeViewport.camera=camera;app.activeViewport.fit()
+    assert app.activeViewport.saveAsImageFile(os.path.join(OUT,'ORBIT-RevD.png'),1600,1200)
+    assert m.execute(m.createFusionArchiveExportOptions(os.path.join(OUT,'ORBIT-RevD.f3d')))
+    assert m.execute(m.createSTEPExportOptions(os.path.join(OUT,'ORBIT-RevD-assembly.step')))
+    issues=[d.timeline.item(i).errorOrWarningMessage for i in range(d.timeline.count) if d.timeline.item(i).healthState!=adsk.fusion.FeatureHealthStates.HealthyFeatureHealthState]
+    assert not issues,str(issues)
+    report={'document':app.activeDocument.name,'timeline_features':d.timeline.count,'issues':issues,'printable_component_count':len(printable),'battery_and_cradle_interferences':collisions,'interference_scope':targets,'excluded_flexible_references':['W03 battery cable','H03 soft pad and strap'],'limitations':['Exact PCB connector/button/antenna positions remain provisional','Battery charge-current rework required before charging chosen pack','No physical fit, electrical, thermal or runtime validation'],'assembled_shell_visible':True}
+    with open(os.path.join(OUT,'validation.json'),'w') as f:json.dump(report,f,indent=2)
+    print(json.dumps(report))

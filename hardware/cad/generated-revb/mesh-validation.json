@@ -1,0 +1,52 @@
+[
+  {
+    "file": "01-Ivory-front-panel.stl",
+    "triangles": 1952,
+    "nonmanifold_edges": 0,
+    "size_mm": [
+      135.0,
+      175.0,
+      3.0
+    ]
+  },
+  {
+    "file": "02-Ivory-shell.stl",
+    "triangles": 3200,
+    "nonmanifold_edges": 0,
+    "size_mm": [
+      135.0,
+      175.0,
+      89.0
+    ]
+  },
+  {
+    "file": "03-Ivory-rear-cover.stl",
+    "triangles": 2224,
+    "nonmanifold_edges": 0,
+    "size_mm": [
+      135.0,
+      175.0,
+      3.0
+    ]
+  },
+  {
+    "file": "04-Charcoal-bezel.stl",
+    "triangles": 320,
+    "nonmanifold_edges": 0,
+    "size_mm": [
+      80.0,
+      80.0,
+      2.0
+    ]
+  },
+  {
+    "file": "05-Charcoal-board-tray---loose-prototype.stl",
+    "triangles": 484,
+    "nonmanifold_edges": 0,
+    "size_mm": [
+      110.0,
+      85.0,
+      3.0
+    ]
+  }
+]

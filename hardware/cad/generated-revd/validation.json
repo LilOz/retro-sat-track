@@ -1,0 +1,22 @@
+{
+  "document": "ORBIT Desktop Terminal - Rev D rechargeable battery",
+  "timeline_features": 574,
+  "issues": [],
+  "printable_component_count": 8,
+  "battery_and_cradle_interferences": [],
+  "interference_scope": [
+    "08 Removable battery cradle",
+    "E10 Protected 1S 4400mAh battery - Adafruit 354 envelope",
+    "E11 Rear momentary power key - generic 12mm"
+  ],
+  "excluded_flexible_references": [
+    "W03 battery cable",
+    "H03 soft pad and strap"
+  ],
+  "limitations": [
+    "Exact PCB connector/button/antenna positions remain provisional",
+    "Battery charge-current rework required before charging chosen pack",
+    "No physical fit, electrical, thermal or runtime validation"
+  ],
+  "assembled_shell_visible": true
+}

@@ -1,0 +1,4 @@
+# Preserve generated CAD exports without text normalization or line diffs.
+*.step binary
+*.stl binary
+*.f3d binary
