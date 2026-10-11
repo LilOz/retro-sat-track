@@ -12,32 +12,30 @@ from app.schemas import (
     Group,
     ObserverData,
     OrbitalElements,
-    ProviderForecast,
-    ProviderScene,
-    ProviderState,
-    ProviderTrack,
+    OrbitTrack,
+    PassForecast,
     SatelliteList,
     SatellitePass,
+    SatelliteState,
+    SceneResponse,
     StatusResponse,
 )
 from app.tracking.catalog import GROUPS, Catalog, CatalogUnavailable
-from app.tracking.common import iso, utcnow
-from app.tracking.n2yo import N2YO, ProviderUnavailable
+from app.tracking.propagation import PropagationError, Tracker, iso, utcnow
+from app.tracking.visibility import PassPredictor
 
 STATIC = Path(__file__).parent / "static"
 DEFAULT_DATA = Path(__file__).resolve().parents[2] / ".data"
 
 
 def create_app(
-    data_dir: str | Path | None = None,
-    catalog: Catalog | None = None,
-    provider: N2YO | None = None,
+    data_dir: str | Path | None = None, catalog: Catalog | None = None
 ) -> FastAPI:
     directory = Path(data_dir or os.environ.get("SAT_TRACK_DATA_DIR", DEFAULT_DATA))
     directory.mkdir(parents=True, exist_ok=True)
     catalog = catalog or Catalog(directory / "catalog")
-    provider = provider or N2YO()
-    observer_path, lock = directory / "observer.json", Lock()
+    tracker, observer_path, lock = Tracker(), directory / "observer.json", Lock()
+    predictor = PassPredictor(tracker)
     observer: Observer | None = None
     if observer_path.exists():
         try:
@@ -45,17 +43,21 @@ def create_app(
         except ValueError, OSError:
             pass
     app = FastAPI(title="ORBIT / Retro Satellite Terminal", version="0.1.0")
-    app.state.catalog, app.state.provider = catalog, provider
+    app.state.catalog, app.state.tracker, app.state.predictor = (
+        catalog,
+        tracker,
+        predictor,
+    )
 
     @app.exception_handler(CatalogUnavailable)
     async def catalog_error(request: Request, exc: CatalogUnavailable) -> JSONResponse:
         return JSONResponse(status_code=503, content={"detail": str(exc)})
 
-    @app.exception_handler(ProviderUnavailable)
-    async def provider_error(
-        request: Request, exc: ProviderUnavailable
+    @app.exception_handler(PropagationError)
+    async def propagation_error(
+        request: Request, exc: PropagationError
     ) -> JSONResponse:
-        return JSONResponse(status_code=503, content={"detail": str(exc)})
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
 
     def record_for(satellite_id: int, group: Group) -> OrbitalElements:
         try:
@@ -76,13 +78,8 @@ def create_app(
         return {
             "status": "ok",
             "utc": iso(utcnow()),
-            "source": "N2YO positions and radio passes / CelesTrak catalog",
-            "provider_configured": provider.configured,
-            "provider_error": (
-                None
-                if provider.configured
-                else "Set N2YO_API_KEY on the backend and restart to enable tracking."
-            ),
+            "source": "CelesTrak GP / OMM JSON",
+            "propagator": "SGP4 / Skyfield",
             "observer": saved,
             "groups": [
                 {"id": key, "name": name, **catalog.freshness(key)}
@@ -138,30 +135,42 @@ def create_app(
     def scene(
         group: Group = "stations",
         selected_id: int = Query(default=25544, ge=1),
-    ) -> ProviderScene:
-        # Track only the selection to keep the upstream request budget predictable.
+        limit: int = Query(default=12, ge=1, le=24),
+    ) -> SceneResponse:
+        records = catalog.ensure(group)["records"]
         selected = record_for(selected_id, group)
+        stride = max(1, len(records) // max(1, limit - 1))
+        preview = [selected] + [
+            r
+            for r in records[::stride]
+            if r["NORAD_CAT_ID"] != selected["NORAD_CAT_ID"]
+        ][: limit - 1]
         now, location = utcnow(), current_observer()
+        states: list[SatelliteState] = []
+        for record in preview:
+            try:
+                states.append(tracker.state(record, location, now))
+            except PropagationError:
+                if record is selected:
+                    raise
         return {
             "utc": iso(now),
-            "states": [provider.state(selected, location, now)],
+            "states": states,
             "catalog": catalog.freshness(group),
             "observer_configured": observer is not None,
         }
 
     @app.get("/api/v1/satellites/{satellite_id}/state")
-    def state(satellite_id: int, group: Group = "stations") -> ProviderState:
-        return provider.state(record_for(satellite_id, group), current_observer())
+    def state(satellite_id: int, group: Group = "stations") -> SatelliteState:
+        return tracker.state(record_for(satellite_id, group), current_observer())
 
     @app.get("/api/v1/satellites/{satellite_id}/track")
     def track(
         satellite_id: int,
         group: Group = "stations",
         samples: int = Query(default=180, ge=24, le=360),
-    ) -> ProviderTrack:
-        return provider.track(
-            record_for(satellite_id, group), current_observer(), samples
-        )
+    ) -> OrbitTrack:
+        return tracker.track(record_for(satellite_id, group), samples)
 
     @app.get("/api/v1/passes")
     def passes(
@@ -173,14 +182,8 @@ def create_app(
         ] = None,
         elevation_m: float = Query(default=0, ge=-500, le=9000, allow_inf_nan=False),
         hours: int = Query(default=48, ge=1, le=72),
-        min_elevation: float = Query(
-            default=10,
-            ge=0,
-            le=80,
-            allow_inf_nan=False,
-            description="Minimum pass peak elevation; rise/set remain horizon crossings",
-        ),
-    ) -> ProviderForecast:
+        min_elevation: float = Query(default=10, ge=0, le=80),
+    ) -> PassForecast:
         if (lat is None) != (lon is None):
             raise HTTPException(422, "Provide both lat and lon")
         if lat is not None and lon is not None:
@@ -193,13 +196,13 @@ def create_app(
             raise HTTPException(
                 409, "Set your ground station location to predict passes"
             )
-        return provider.predict(
+        return predictor.predict(
             record_for(satellite_id, group), location, hours, min_elevation
         )
 
     @app.get("/api/v1/passes/{pass_id}")
     def pass_detail(pass_id: str) -> SatellitePass:
-        detail = provider.detail(pass_id)
+        detail = predictor.detail(pass_id)
         if detail is None:
             raise HTTPException(404, "Pass not found; request the pass list first")
         return detail

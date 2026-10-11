@@ -56,8 +56,7 @@ class StatusResponse(TypedDict):
     status: str
     utc: str
     source: str
-    provider_configured: bool
-    provider_error: str | None
+    propagator: str
     observer: ObserverData | None
     groups: list[GroupFreshness]
 
@@ -124,7 +123,7 @@ class SceneResponse(TypedDict):
 class SkyPathPoint(TypedDict):
     azimuth_deg: float
     elevation_deg: float
-    range_km: float | None
+    range_km: float
 
 
 class SatellitePass(TypedDict):
@@ -154,53 +153,4 @@ class PassForecast(TypedDict):
     min_elevation_deg: float
     passes: list[SatellitePass]
     above_mask_now: bool
-    note: str
-
-
-class ProviderState(TypedDict):
-    id: int
-    name: str
-    utc: str
-    latitude_deg: float
-    longitude_deg: float
-    altitude_km: float
-    velocity_km_s: float | None
-    inclination_deg: float
-    period_minutes: float
-    eccentricity: float
-    mean_orbital_phase_deg: float | None
-    element_epoch: str
-    element_age_hours: float
-    elements_stale: bool
-    azimuth_deg: float
-    elevation_deg: float
-    range_km: float | None
-    above_horizon: bool
-    position_globe_km: list[float]
-    source: str
-
-
-class ProviderTrack(TypedDict):
-    id: int
-    utc: str
-    window_seconds: int
-    path_globe_km: list[list[float]]
-    ground_track: list[GroundTrackPoint]
-    source: str
-
-
-class ProviderScene(TypedDict):
-    utc: str
-    states: list[ProviderState]
-    catalog: CatalogFreshness
-    observer_configured: bool
-
-
-class ProviderForecast(TypedDict):
-    satellite_id: int
-    observer: ObserverData
-    generated_utc: str
-    window_end_utc: str
-    min_peak_elevation_deg: float
-    passes: list[SatellitePass]
     note: str

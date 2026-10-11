@@ -1,4 +1,4 @@
-"""Retained local solver; unused by the N2YO app, with no automatic fallback."""
+"""Geometric passes above an observer's elevation mask (no optical guarantee)."""
 
 import hashlib
 from datetime import datetime, timedelta

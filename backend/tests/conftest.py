@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import cast
 
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sgp4.api import Satrec
@@ -13,7 +12,6 @@ from app.main import create_app
 from app.models import Observer
 from app.schemas import OrbitalElements
 from app.tracking.catalog import Catalog
-from app.tracking.n2yo import N2YO
 from app.tracking.propagation import Tracker
 
 
@@ -43,61 +41,10 @@ def observer() -> Observer:
 
 
 @pytest.fixture
-def client(
-    tmp_path: Path,
-    record: OrbitalElements,
-    instant: datetime,
-    monkeypatch: pytest.MonkeyPatch,
-) -> Iterator[TestClient]:
+def client(tmp_path: Path, record: OrbitalElements) -> Iterator[TestClient]:
     def catalog_records(group: str) -> list[OrbitalElements]:
         return [record]
 
     catalog = Catalog(tmp_path / "catalog", fetcher=catalog_records)
-
-    def current_instant() -> datetime:
-        return instant
-
-    monkeypatch.setattr("app.tracking.n2yo.utcnow", current_instant)
-    timestamp = int(instant.timestamp())
-
-    def provider_response(request: httpx.Request) -> httpx.Response:
-        info = {"satid": 25544, "satname": "ISS (ZARYA)"}
-        if "/positions/" in request.url.path:
-            return httpx.Response(
-                200,
-                json={
-                    "info": info,
-                    "positions": [
-                        {
-                            "satlatitude": 50.24372,
-                            "satlongitude": -86.3953,
-                            "sataltitude": 420,
-                            "azimuth": 120,
-                            "elevation": 20,
-                            "timestamp": timestamp + offset,
-                        }
-                        for offset in range(300)
-                    ],
-                },
-            )
-        return httpx.Response(
-            200,
-            json={
-                "info": info,
-                "passes": [
-                    {
-                        "startAz": 100,
-                        "startUTC": timestamp + 600,
-                        "maxAz": 150,
-                        "maxEl": 40,
-                        "maxUTC": timestamp + 660,
-                        "endAz": 200,
-                        "endUTC": timestamp + 720,
-                    }
-                ],
-            },
-        )
-
-    provider = N2YO("fixture-key", httpx.MockTransport(provider_response))
-    with TestClient(create_app(tmp_path, catalog, provider)) as value:
+    with TestClient(create_app(tmp_path, catalog)) as value:
         yield value
