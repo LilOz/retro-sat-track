@@ -1,3 +1,5 @@
+> These stubs support the retained local solver and its existing regression checks. The running app uses N2YO and does not import Skyfield.
+
 # Skyfield typing support
 
 These partial stubs describe the Skyfield API used by this project. They supplement the installed library for Pyright and its language server; they contain no runtime implementation.

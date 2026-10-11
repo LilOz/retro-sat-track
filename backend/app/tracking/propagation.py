@@ -1,4 +1,4 @@
-"""SGP4 states with WGS84 geography and explicitly named reference frames."""
+"""Retained local solver; unused by the N2YO app, with no automatic fallback."""
 
 import math
 from datetime import UTC, datetime, timedelta

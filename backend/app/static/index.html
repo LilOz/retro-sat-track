@@ -105,16 +105,16 @@
                 <h2>
                   <span class="little-square"></span> EARTH / ORBITAL VIEW
                 </h2>
-                <span class="micro">SGP4 PROPAGATION</span>
+                <span id="track-window" class="micro">PATH / UP TO 5 MIN</span>
               </div>
               <div class="globe-stage">
                 <canvas
                   id="globe"
-                  aria-label="Interactive Earth globe with current satellite positions and selected orbit"
+                  aria-label="Interactive Earth globe with current satellite position and predicted five-minute path"
                 ></canvas>
                 <div class="globe-corner top-left">
-                  <span class="live-label">● PROPAGATED LIVE</span
-                  ><span>EARTH FIXED / WGS84</span>
+                  <span class="live-label">● N2YO POSITIONS</span
+                  ><span>LAT / LON / ALT</span>
                 </div>
                 <div class="globe-corner bottom-left">
                   <span id="scene-count">0 OBJECTS IN VIEW</span
@@ -132,12 +132,12 @@
                   </button>
                 </div>
                 <div id="globe-empty" class="canvas-empty">
-                  ACQUIRING ORBITAL ELEMENTS…
+                  ACQUIRING SATELLITE CATALOG…
                 </div>
               </div>
               <div class="globe-legend">
                 <span><i class="legend-dot amber"></i> SELECTED OBJECT</span
-                ><span><i class="legend-line"></i> ORBIT</span
+                ><span><i class="legend-line"></i> PREDICTED PATH</span
                 ><span><i class="legend-line dashed"></i> GROUND TRACK</span
                 ><span class="scale-label">REAL ALTITUDE SCALE</span>
               </div>
@@ -187,7 +187,7 @@
                       <dd data-value="longitude_deg">—</dd>
                     </div>
                     <div>
-                      <dt>ELEMENT AGE</dt>
+                      <dt>CATALOG ELEMENT AGE</dt>
                       <dd id="element-age">—</dd>
                     </div>
                   </dl>
@@ -235,8 +235,8 @@
             <span class="eyebrow">SPACECRAFT TELEMETRY</span>
             <h2>Numbers from orbit.</h2>
             <p>
-              Computed locally from CelesTrak orbital elements. Updates every
-              three seconds.
+              Positions from N2YO, refreshed every three seconds. Orbital metadata
+              comes from CelesTrak; velocity, phase and range are unavailable.
             </p>
           </div>
           <div class="telemetry-cards">
@@ -291,7 +291,7 @@
                   <dd data-value="longitude_deg">—</dd>
                 </div>
                 <div>
-                  <dt>Mean orbital phase <small>estimated</small></dt>
+                  <dt>Orbital phase <small>unavailable</small></dt>
                   <dd><span data-value="mean_orbital_phase_deg">—</span>°</dd>
                 </div>
                 <div>
@@ -304,11 +304,11 @@
                 </div>
                 <div>
                   <dt>Altitude reference</dt>
-                  <dd>WGS84 ellipsoid</dd>
+                  <dd>N2YO reported height</dd>
                 </div>
                 <div>
                   <dt>Velocity reference</dt>
-                  <dd>Geocentric inertial</dd>
+                  <dd>Not provided by N2YO</dd>
                 </div>
               </dl>
             </section>
@@ -332,8 +332,8 @@
                 </div>
               </dl>
               <p class="panel-note">
-                Look angles use your saved ground station. Session charts
-                accumulate real samples while this terminal is open.
+                Look angles use your saved ground station. The altitude chart
+                records N2YO predictions during this session.
               </p>
               <button class="outline-button configure-station">
                 CONFIGURE STATION ↗
@@ -349,9 +349,9 @@
               <p>Geometric passes over the next 48 hours. All times are UTC.</p>
             </div>
             <label class="control-label"
-              >MINIMUM ELEVATION<select id="elevation-mask">
+              >MINIMUM PEAK ELEVATION<select id="elevation-mask">
                 <option value="0">0° / Horizon</option>
-                <option value="10" selected>10° / Clear horizon</option>
+                <option value="10" selected>10° / Peak or higher</option>
                 <option value="20">20°</option>
                 <option value="30">30°</option>
               </select></label
@@ -360,12 +360,12 @@
           <div class="passes-layout">
             <section class="panel sky-panel">
               <div class="panel-heading">
-                <h2>LOCAL SKY / SELECTED PASS</h2>
-                <span class="micro">ZENITH AT CENTER</span>
+                <h2>LOCAL SKY / PASS EVENTS</h2>
+                <span class="micro">RISE / PEAK / SET</span>
               </div>
               <canvas
                 id="sky-plot"
-                aria-label="Polar sky plot showing the selected pass from rise to set"
+                aria-label="Schematic sky diagram joining the rise, peak and set events"
               ></canvas>
               <div class="sky-caption">
                 <span id="sky-direction">AWAITING FORECAST</span
@@ -406,14 +406,15 @@
           </div>
           <p class="forecast-note">
             <span>ⓘ</span> A geometric pass is a line-of-sight opportunity.
-            Sunlight, darkness, terrain and weather are not evaluated; optical
-            visibility is not guaranteed.
+            Rise and set are horizon crossings; the minimum elevation filters the
+            peak. The sky diagram joins three events, not a sampled trajectory.
+            Sunlight and weather are not evaluated; optical visibility is not guaranteed.
           </p>
         </section>
       </main>
       <footer>
         <span><i class="footer-dot"></i> ORBIT / LOCAL TRACKING STATION</span
-        ><span id="freshness">CELESTRAK / WAITING FOR ELEMENTS</span
+        ><span id="freshness">N2YO / WAITING FOR POSITIONS</span
         ><span
           >TERMINAL v0.1 <span class="footer-divider">│</span>
           <button id="effects-button" aria-pressed="true">CRT ON</button>
@@ -465,8 +466,8 @@
           </button>
         </div>
         <p class="dialog-note">
-          Your coordinates stay on this PC. They determine the local horizon and
-          upcoming passes.
+          Your coordinates are saved on this PC and sent to N2YO to request
+          local look angles and upcoming passes.
         </p>
         <label
           >STATION NAME<input

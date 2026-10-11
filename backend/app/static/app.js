@@ -36,7 +36,8 @@ let sceneBusy = false,
   passBusy = false,
   catalogVersion = 0,
   searchTimer;
-const fmt = (value, places = 1) => Number(value).toFixed(places);
+const fmt = (value, places = 1) =>
+  value == null || !Number.isFinite(value) ? "—" : value.toFixed(places);
 const utcTime = (date) => new Date(date).toISOString().slice(11, 19);
 const utcDate = (date) =>
   new Date(date).toISOString().slice(0, 10).replaceAll("-", ".");
@@ -122,8 +123,9 @@ async function status() {
     state.observer = data.observer;
     stationLabel();
     error("connection");
-    $("connection").textContent = "SYSTEM ONLINE";
-    $("connection").className = "status-light";
+    error("provider", data.provider_error);
+    $("connection").textContent = data.provider_configured ? "BACKEND ONLINE" : "API KEY REQUIRED";
+    $("connection").className = data.provider_configured ? "status-light" : "status-light pending";
   } catch (exc) {
     $("connection").textContent = "BACKEND OFFLINE";
     $("connection").className = "status-light offline";
@@ -136,7 +138,7 @@ async function status() {
 function freshness(catalog) {
   const minutes = Math.floor(catalog.download_age_seconds / 60);
   $("freshness").textContent =
-    `CELESTRAK / ${catalog.stale ? "CACHED · " : ""}DOWNLOADED ${minutes}m AGO`;
+    `N2YO / CATALOG ${catalog.stale ? "CACHED · " : ""}${minutes}m AGO`;
   error(
     "catalog",
     catalog.error ||
@@ -219,6 +221,7 @@ function clearSelection() {
   state.pass = null;
   state.history = [];
   state.lastScene = 0;
+  $("track-window").textContent = "PATH / UP TO 5 MIN";
   document.querySelectorAll("[data-value]").forEach((el) => {
     el.textContent = "—";
   });
@@ -241,7 +244,7 @@ async function selectSatellite(satellite) {
   $("target-id").textContent = satellite.id;
   $("target-group").textContent =
     $("group-select").selectedOptions[0].text.toUpperCase();
-  $("globe-empty").textContent = "PROPAGATING SELECTED ORBIT…";
+  $("globe-empty").textContent = "ACQUIRING N2YO POSITIONS…";
   log(`Tracking ${satellite.name} / NORAD ${satellite.id}`, true);
   renderCatalog();
   await Promise.allSettled([
@@ -251,6 +254,7 @@ async function selectSatellite(satellite) {
   ]);
 }
 function formatValue(key, value) {
+  if (value == null || !Number.isFinite(value)) return "—";
   if (key === "latitude_deg")
     return `${fmt(Math.abs(value), 3)}° ${value >= 0 ? "N" : "S"}`;
   if (key === "longitude_deg")
@@ -276,12 +280,12 @@ async function refreshScene(force = false) {
     const data = await api(`scene?group=${group}&selected_id=${id}`);
     if (token !== state.token) return;
     state.scene = data.states;
-    state.lastScene = Date.now();
     freshness(data.catalog);
     error("scene");
     const selected = data.states.find((item) => item.id === id);
     if (!selected)
-      throw new Error("Selected satellite has no valid propagated state.");
+      throw new Error("Selected satellite has no current provider position.");
+    state.lastScene = Date.parse(selected.utc);
     $("globe-empty").hidden = true;
     document.querySelectorAll("[data-value]").forEach((el) => {
       const key = el.dataset.value;
@@ -300,17 +304,17 @@ async function refreshScene(force = false) {
         ? "ABOVE HORIZON"
         : "BELOW HORIZON"
       : "SET LOCATION";
-    $("scene-count").textContent = `${data.states.length} OBJECTS IN PREVIEW`;
+    $("scene-count").textContent = `${data.states.length} SELECTED OBJECT / N2YO`;
     error(
       "elements",
       selected.elements_stale
-        ? "Orbital elements are over 7 days from their epoch. Positions and forecasts may be inaccurate."
+        ? "CelesTrak catalog metadata is over 7 days from its epoch. N2YO uses its own elements for positions and forecasts."
         : null,
     );
     state.history.push(selected);
     if (state.history.length > 180) state.history.shift();
     log(
-      `ALT ${fmt(selected.altitude_km)} km · VEL ${fmt(selected.velocity_km_s, 3)} km/s`,
+      `ALT ${fmt(selected.altitude_km)} km · N2YO ${utcTime(selected.utc)}`,
     );
     drawAuxiliary();
   } catch (exc) {
@@ -333,6 +337,7 @@ async function refreshTrack() {
     const data = await api(`satellites/${id}/track?group=${group}`);
     if (token !== state.token) return;
     state.track = data;
+    $("track-window").textContent = `PATH / NEXT ${data.window_seconds}s`;
     error("track");
   } catch (exc) {
     if (token === state.token) error("track", exc.message);
@@ -359,10 +364,7 @@ async function refreshPasses(force = false) {
       data.passes.find((p) => p.id === previouslySelected) ||
       data.passes[0] ||
       null;
-    state.passNote =
-      data.above_mask_now && !data.passes.length
-        ? "Object is above the elevation mask now; no complete rise-to-set window occurs in this forecast."
-        : null;
+    state.passNote = null;
     error("passes");
     renderPasses();
     tickClock();
@@ -393,7 +395,7 @@ function renderPasses(message) {
       message ||
       (state.observer
         ? state.passNote ||
-          "Try a lower elevation mask or select another satellite. Forecasts cover the next 48 hours."
+          "Try a lower minimum peak elevation or select another satellite. Forecasts cover the next 48 hours."
         : "Enter your location to calculate rise, culmination and set times for this spacecraft.");
     empty.querySelector("button").textContent = state.observer
       ? "EDIT GROUND STATION ↗"
@@ -452,6 +454,11 @@ function renderPasses(message) {
 function tickClock() {
   $("utc-clock").textContent = utcTime(now());
   $("utc-date").textContent = utcDate(now());
+  if (state.track?.ground_track.length) {
+    const end = Date.parse(state.track.ground_track.at(-1).utc);
+    const remaining = Math.max(0, Math.floor((end - now()) / 1000));
+    $("track-window").textContent = remaining ? `PATH / NEXT ${remaining}s` : "PATH EXPIRED";
+  }
   const next = state.passes.find((pass) => Date.parse(pass.set_utc) > now());
   $("pass-led").classList.toggle("ready", !!next);
   if (next) {
@@ -485,7 +492,7 @@ function tickClock() {
       : "Local horizon forecast";
     $("next-pass-elevation").textContent = "—";
   }
-  if (state.lastScene && Date.now() - state.lastScene > 15000) {
+  if (state.lastScene && now() - state.lastScene > 15000) {
     error(
       "age",
       "Telemetry has stopped updating. Last received values remain on screen.",
@@ -495,7 +502,7 @@ function tickClock() {
   } else error("age");
 }
 
-// Canvas drawing uses Earth-fixed kilometres, with camera rotation independent of propagation.
+// Canvas drawing projects provider latitude/longitude/altitude onto a spherical Earth.
 function canvas(id) {
   const element = $(id),
     rect = element.getBoundingClientRect();
@@ -571,7 +578,9 @@ function drawGlobe() {
     cx = w / 2,
     cy = h / 2 - 2;
   const trackVectors =
-    state.track?.orbit_ecef_km.map((v) => v.map((n) => n / EARTH)) || [];
+    state.track?.path_globe_km
+      .filter((v, index) => Date.parse(state.track.ground_track[index].utc) >= now())
+      .map((v) => v.map((n) => n / EARTH)) || [];
   const maxRadius = trackVectors.length
     ? Math.max(1.22, ...trackVectors.map((v) => Math.hypot(...v)))
     : 1.22;
@@ -651,19 +660,12 @@ function drawGlobe() {
   ctx.arc(cx, cy, r, 0, TAU);
   ctx.stroke();
   if (trackVectors.length) {
-    // Update the frozen-Earth orbit orientation between track refreshes.
-    const spin = (-(now() - Date.parse(state.track.utc)) / 1000) * 7.292115e-5;
-    const orbit = trackVectors.map(([x, y, z]) => [
-      x * Math.cos(spin) - y * Math.sin(spin),
-      x * Math.sin(spin) + y * Math.cos(spin),
-      z,
-    ]);
-    globeLine(ctx, orbit, cx, cy, r, colors.green, 1.2, false, true);
+    globeLine(ctx, trackVectors, cx, cy, r, colors.green, 1.2, false, true);
     globeLine(
       ctx,
-      state.track.ground_track.map((p) =>
-        xyz(p.longitude_deg, p.latitude_deg, 1.002),
-      ),
+      state.track.ground_track
+        .filter((p) => Date.parse(p.utc) >= now())
+        .map((p) => xyz(p.longitude_deg, p.latitude_deg, 1.002)),
       cx,
       cy,
       r,
@@ -691,7 +693,7 @@ function drawGlobe() {
   );
   for (const satellite of states) {
     const selected = satellite.id === state.selected?.id,
-      p = project(satellite.position_ecef_km.map((v) => v / EARTH));
+      p = project(satellite.position_globe_km.map((v) => v / EARTH));
     if (p.z < 0 && Math.hypot(p.x, p.y) < 1) continue;
     const x = cx + p.x * r,
       y = cy - p.y * r;
@@ -765,13 +767,15 @@ function drawSky() {
     });
     ctx.strokeStyle = colors.green;
     ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
     ctx.beginPath();
     points.forEach(([x, y], i) => {
       if (i) ctx.lineTo(x, y);
       else ctx.moveTo(x, y);
     });
     ctx.stroke();
-    [points[0], points.at(-1)].forEach(([x, y]) => {
+    ctx.setLineDash([]);
+    points.forEach(([x, y]) => {
       ctx.fillStyle = colors.amber;
       ctx.beginPath();
       ctx.arc(x, y, 3, 0, TAU);
@@ -781,6 +785,7 @@ function drawSky() {
     ctx.font = "8px Consolas, monospace";
     ctx.fillText("RISE", points[0][0], points[0][1] + 15);
     ctx.fillText("SET", points.at(-1)[0], points.at(-1)[1] - 10);
+    ctx.fillText("PEAK", points[1][0], points[1][1] - 10);
   }
   ctx.textAlign = "left";
 }
@@ -788,7 +793,7 @@ function chart(id, key) {
   const box = canvas(id);
   if (!box) return;
   const { ctx, w, h } = box,
-    samples = state.history.map((s) => s[key]);
+    samples = state.history.map((s) => s[key]).filter((value) => value != null && Number.isFinite(value));
   ctx.strokeStyle = "#344339";
   ctx.lineWidth = 0.6;
   ctx.beginPath();
@@ -798,7 +803,7 @@ function chart(id, key) {
   ctx.font = "7px Consolas, monospace";
   ctx.fillStyle = colors.muted;
   if (samples.length < 2) {
-    ctx.fillText("COLLECTING SESSION SAMPLES…", 0, h - 2);
+    ctx.fillText(key === "velocity_km_s" ? "NOT PROVIDED BY N2YO" : "COLLECTING SESSION SAMPLES…", 0, h - 2);
     return;
   }
   const min = Math.min(...samples),
@@ -891,7 +896,7 @@ $("group-select").onchange = async () => {
   $("target-name").textContent = "Acquiring catalog…";
   $("target-group").textContent =
     $("group-select").selectedOptions[0].text.toUpperCase();
-  $("globe-empty").textContent = "ACQUIRING ORBITAL ELEMENTS…";
+  $("globe-empty").textContent = "ACQUIRING SATELLITE CATALOG…";
   renderCatalog();
   await loadCatalog({ choose: true });
 };
