@@ -1,0 +1,175 @@
+import adsk.core
+import adsk.fusion
+import math
+import os
+import json
+
+OUT = r'C:\Users\Ayman\.codex\visualizations\2026\10\11\01a12c1e-2027-7d32-b8a6-29affd470b6c\orbit-cad-revb'
+
+def run(_context: str):
+    app = adsk.core.Application.get()
+    doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
+    doc.name = 'ORBIT Desktop Terminal - Rev B 4-inch'
+    design = adsk.fusion.Design.cast(app.activeProduct)
+    design.designType = adsk.fusion.DesignTypes.ParametricDesignType
+    design.unitsManager.distanceDisplayUnits = adsk.fusion.DistanceUnits.MillimeterDistanceUnits
+    root = design.rootComponent
+
+    V = adsk.core.ValueInput.createByReal
+    P = lambda x,y: adsk.core.Point3D.create(x/10,y/10,0)
+    NEW = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
+    CUT = adsk.fusion.FeatureOperations.CutFeatureOperation
+    JOIN = adsk.fusion.FeatureOperations.JoinFeatureOperation
+    printable = []
+    reference = []
+
+    def comp(name, print_part=True):
+        c = root.occurrences.addNewComponent(adsk.core.Matrix3D.create()).component
+        c.name = name
+        (printable if print_part else reference).append(c)
+        return c
+
+    def sketch(c,z,name):
+        pi=c.constructionPlanes.createInput()
+        pi.setByOffset(c.xYConstructionPlane,V(z/10))
+        pl=c.constructionPlanes.add(pi)
+        pl.isLightBulbOn=False
+        s=c.sketches.add(pl)
+        s.name=name
+        return s
+
+    def extrude(c,s,depth,op,name):
+        if s.profiles.count != 1:
+            raise RuntimeError(name + ': expected one closed profile, got ' + str(s.profiles.count))
+        i=c.features.extrudeFeatures.createInput(s.profiles.item(0),op)
+        extent=adsk.fusion.DistanceExtentDefinition.create(V(abs(depth)/10))
+        direction=adsk.fusion.ExtentDirections.PositiveExtentDirection if depth>0 else adsk.fusion.ExtentDirections.NegativeExtentDirection
+        i.setOneSideExtent(extent,direction)
+        f=c.features.extrudeFeatures.add(i)
+        f.name=name
+        s.isLightBulbOn=False
+        return f
+
+    def box(c,x,y,z,w,h,d,name,op=NEW):
+        s=sketch(c,z,name)
+        s.sketchCurves.sketchLines.addTwoPointRectangle(P(x,y),P(x+w,y+h))
+        return extrude(c,s,d,op,name)
+
+    def rounded(c,x,y,z,w,h,r,d,name,op=NEW):
+        s=sketch(c,z,name)
+        lines=s.sketchCurves.sketchLines
+        arcs=s.sketchCurves.sketchArcs
+        lines.addByTwoPoints(P(x+r,y),P(x+w-r,y))
+        arcs.addByCenterStartSweep(P(x+w-r,y+r),P(x+w-r,y),math.pi/2)
+        lines.addByTwoPoints(P(x+w,y+r),P(x+w,y+h-r))
+        arcs.addByCenterStartSweep(P(x+w-r,y+h-r),P(x+w,y+h-r),math.pi/2)
+        lines.addByTwoPoints(P(x+w-r,y+h),P(x+r,y+h))
+        arcs.addByCenterStartSweep(P(x+r,y+h-r),P(x+r,y+h),math.pi/2)
+        lines.addByTwoPoints(P(x,y+h-r),P(x,y+r))
+        arcs.addByCenterStartSweep(P(x+r,y+r),P(x,y+r),math.pi/2)
+        return extrude(c,s,d,op,name)
+
+    def circle(c,x,y,z,r,d,name,op=NEW):
+        s=sketch(c,z,name)
+        s.sketchCurves.sketchCircles.addByCenterRadius(P(x,y),r/10)
+        return extrude(c,s,d,op,name)
+
+    front=comp('01 Ivory front panel')
+    rounded(front,0,0,0,135,175,6,3,'Front panel 3mm')
+    rounded(front,31.5,85,0,72,72,1,3,'Display aperture - provisional',CUT)
+    for x,y,r,label in [(36,36,3.7,'Encoder'),(99,36,3.7,'Potentiometer'),(18,70,3.2,'Hold toggle'),(117,70,3.2,'Grid toggle')]:
+        circle(front,x,y,0,r,3,label+' clearance',CUT)
+    rounded(front,50.5,16,0,34,2.4,1,0.8,'Decorative disk slot recess',CUT)
+    corners=[(5,5),(130,5),(5,170),(130,170)]
+    for x,y in corners:
+        circle(front,x,y,0,1.7,3,'M3 front screw',CUT)
+
+    shell=comp('02 Ivory shell')
+    rounded(shell,0,0,3,135,175,6,89,'Shell exterior')
+    rounded(shell,2.4,2.4,3,130.2,170.2,3.6,89,'Open cavity 2.4mm walls',CUT)
+    for x,y in corners:
+        for z in [3,84]:
+            circle(shell,x,y,z,4,8,'M3 corner boss',JOIN)
+            circle(shell,x,y,z,1.7,8,'M3 boss bore',CUT)
+    # Front holes and rear holes accept screws with nuts accessed from cavity.
+
+    rear=comp('03 Ivory rear cover')
+    rounded(rear,0,0,92,135,175,6,3,'Rear cover')
+    for x,y in corners:
+        circle(rear,x,y,92,1.7,3,'M3 rear screw',CUT)
+    rounded(rear,50.5,12,92,34,18,2,3,'USB service opening - adapter required',CUT)
+    for x in range(35,106,10):
+        rounded(rear,x,145,92,3,15,1,3,'Rear vent',CUT)
+
+    bezel=comp('04 Charcoal bezel')
+    rounded(bezel,27.5,81,-2,80,80,4,2,'Inset display bezel')
+    rounded(bezel,31.5,85,-2,72,72,1,2,'Bezel view opening',CUT)
+    # Alignment pegs register bezel to front; glue after fit check.
+    for x,y in [(29.5,83),(105.5,159)]:
+        circle(bezel,x,y,0,0.9,2,'Bezel locating peg',JOIN)
+        circle(front,x,y,0,1.1,2.2,'Bezel locating socket',CUT)
+
+    tray=comp('05 Charcoal board tray - loose prototype')
+    rounded(tray,165,0,0,110,85,3,3,'Removable tray blank')
+    for x in [173,257]:
+        rounded(tray,x,8,0,4,65,1.8,3,'Adjustable mounting slot',CUT)
+
+    # Physical hardware references are not exported as printable parts.
+    screen=comp('REF Green TFT visible area',False)
+    rounded(screen,31,84.5,3.6,73,73,1,1,'Green screen proxy')
+    for x,name in [(36,'REF Select knob'),(99,'REF Zoom knob')]:
+        c=comp(name,False)
+        circle(c,x,36,-16,11,13,'Purchased knob envelope')
+        box(c,x-0.7,44,-16.1,1.4,2.5,0.2,'Pointer mark')
+    for x,name in [(18,'REF HOLD toggle'),(117,'REF GRID toggle')]:
+        c=comp(name,False)
+        circle(c,x,70,-2,4,2,'Toggle washer')
+        circle(c,x,70,-15,1.5,13,'Metal toggle lever envelope')
+
+    board=comp('REF Waveshare module 76.54 x 74.66 - thickness provisional',False)
+    box(board,29.23,83.67,5,76.54,74.66,8,'Module envelope - verify connectors')
+    board.bRepBodies.item(0).isLightBulbOn=False
+
+    # Colour copies: visible physical palette, no downloaded appearances.
+    lib=app.materialLibraries.itemByName('Fusion Appearance Library')
+    base=lib.appearances.itemByName('Plastic - Matte (White)') if lib else None
+    if base:
+        for name,color,components in [('Ivory PLA',(232,222,198,255),[front,shell,rear]),('Charcoal PLA',(40,43,40,255),[bezel,tray]),('Green phosphor',(30,180,65,255),[screen]),('Dark knobs',(30,32,29,255),[reference[1],reference[2]]),('Metal switches',(145,145,140,255),[reference[3],reference[4]])]:
+            a=design.appearances.addByCopy(base,name)
+            prop=adsk.core.ColorProperty.cast(a.appearanceProperties.itemById('opaque_albedo'))
+            if prop: prop.value=adsk.core.Color.create(*color)
+            for c in components:
+                for body in c.bRepBodies: body.appearance=a
+
+    issues=[]
+    for i in range(design.timeline.count):
+        t=design.timeline.item(i)
+        if t.healthState != adsk.fusion.FeatureHealthStates.HealthyFeatureHealthState:
+            issues.append({'feature':t.name,'warning':t.errorOrWarningMessage})
+    if issues: raise RuntimeError(json.dumps(issues))
+    for c in printable:
+        if c.bRepBodies.count != 1: raise RuntimeError(c.name+' has '+str(c.bRepBodies.count)+' bodies')
+        if not c.bRepBodies.item(0).isSolid: raise RuntimeError(c.name+' is not solid')
+
+    camera=app.activeViewport.camera
+    camera.isFitView=False
+    camera.eye=adsk.core.Point3D.create(22,20,-28)
+    camera.target=adsk.core.Point3D.create(8,7.5,4)
+    camera.upVector=adsk.core.Vector3D.create(0,1,0)
+    camera.cameraType=adsk.core.CameraTypes.OrthographicCameraType
+    app.activeViewport.camera=camera
+    app.activeViewport.fit()
+    os.makedirs(OUT,exist_ok=True)
+    manager=design.exportManager
+    assert manager.execute(manager.createFusionArchiveExportOptions(os.path.join(OUT,'ORBIT-RevB.f3d')))
+    assert manager.execute(manager.createSTEPExportOptions(os.path.join(OUT,'ORBIT-RevB-assembly.step')))
+    for c in printable:
+        slug=c.name.replace(' ','-')
+        assert manager.execute(manager.createSTEPExportOptions(os.path.join(OUT,slug+'.step'),c))
+        stl=manager.createSTLExportOptions(c,os.path.join(OUT,slug+'.stl'))
+        stl.meshRefinement=adsk.fusion.MeshRefinementSettings.MeshRefinementHigh
+        assert manager.execute(stl)
+    assert app.activeViewport.saveAsImageFile(os.path.join(OUT,'ORBIT-RevB.png'),1400,1000)
+    report={'document':doc.name,'printable_components':[{'name':c.name,'bodies':c.bRepBodies.count,'volume_cm3':c.bRepBodies.item(0).volume} for c in printable],'timeline_features':design.timeline.count,'issues':issues,'output':OUT,'limitations':['72mm aperture and screen mount must be checked against purchased non-touch board revision','Tray mounts to shell not yet designed','Knobs and toggles are reference envelopes, not printable hardware','Not physically fit tested']}
+    with open(os.path.join(OUT,'validation.json'),'w') as f: json.dump(report,f,indent=2)
+    print(json.dumps(report))
