@@ -1,4 +1,6 @@
-> **Current hardware is revision B: Waveshare ESP32-S3-LCD-4 without touch.** This file and the compiled starter below describe the previous DevKitC/ILI9341 build. Do not use those pin assignments or flash that binary onto the Waveshare board. See [current BOM and firmware port design](../hardware/BOM.md) for the replacement RGB display/I²C control architecture.
+> **Current hardware is revision D: Waveshare ESP32-S3-LCD-4 without touch.** This file and the compiled starter below describe the previous DevKitC/ILI9341 build. Do not use those pin assignments or flash that binary onto the Waveshare board. See [current BOM and firmware port design](../hardware/BOM.md) for the replacement RGB display/I²C control architecture.
+
+[Battery power-service requirements](../hardware/BATTERY.md) are specified for Rev D but not implemented in this legacy starter.
 
 # ESP32-S3 client design
 

@@ -74,7 +74,7 @@ retro-sat-track/
 └── .github/workflows/ci.yml
 ```
 
-Runtime files live in ignored `.data/`; override with `SAT_TRACK_DATA_DIR`. This MVP runs on your PC. The next hardware phase is drafted in [hardware/README.md](hardware/README.md): bill of materials, Fusion CAD generator and [ESP32 firmware design](firmware/README.md). Revision C has been created and geometrically checked in Fusion; physical fit and the Waveshare firmware port remain pending.
+Runtime files live in ignored `.data/`; override with `SAT_TRACK_DATA_DIR`. This MVP runs on your PC. The next hardware phase is drafted in [hardware/README.md](hardware/README.md): bill of materials, Fusion CAD generator and [ESP32 firmware design](firmware/README.md). Revision D adds a rechargeable battery cradle and power design in Fusion; physical fit, charger-current modification/validation and the Waveshare firmware port remain pending.
 
 ## API for a future ESP client
 

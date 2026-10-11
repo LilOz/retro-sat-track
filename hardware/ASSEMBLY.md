@@ -1,4 +1,6 @@
-# ORBIT revision C — electronics integration and build
+# ORBIT revision D — electronics integration and build
+
+Revision D retains the Rev C controls and adds rechargeable power. See [battery integration](BATTERY.md) for the cradle, revised rear panel, required charger-current change and commissioning sequence.
 
 ## What the loose tray was for
 
@@ -28,6 +30,9 @@ Shell depth runs from Z3 to Z92. Tray is Z55–58; spacer-mounted boards are nea
 flowchart TD
   USB[USB 5 V supply] --> EXT[Panel USB extension]
   EXT --> WS[Waveshare screen + ESP32-S3]
+  BAT[Protected 1S 4400 mAh pack] <--> PWR[Onboard charger and battery conversion]
+  PWR <--> WS
+  KEY[Rear momentary power key] --> PWR
   WS --> BUS[3.3 V I2C: power, ground, SDA, SCL]
   BUS --> SS[Seesaw encoder interface 0x36]
   SS --> ENC[Select encoder and push]
@@ -40,7 +45,7 @@ flowchart TD
 
 The shared four-wire I²C harness is 3V3/GND/SDA/SCL. Set and measure the Waveshare terminal's I²C power selector at 3.3 V. Use the schematic/BSP for the purchased revision: V4 uses SDA15/SCL7; earlier revisions differ. Do not connect to the former DevKitC SPI pin table.
 
-Encoder: solder the compatible PEC11-pinout encoder to seesaw 4991, including its push contacts. MCP: GPA0 to HOLD, GPA1 to GRID, both pulled high; each switch closes to ground. ADC: A0 to pot wiper, ends to 3V3/GND, 100 nF wiper-to-ground. USB supplies the Waveshare board, which powers the low-current input interfaces. Use a single USB supply; no battery or external DC input for this prototype.
+Encoder: solder the compatible PEC11-pinout encoder to seesaw 4991, including its push contacts. MCP: GPA0 to HOLD, GPA1 to GRID, both pulled high; each switch closes to ground. ADC: A0 to pot wiper, ends to 3V3/GND, 100 nF wiper-to-ground. USB supplies the Waveshare board, which powers the low-current input interfaces. Use one USB supply and the protected pack on the dedicated battery header. The V4 charger must be configured and measured at the reduced charge current before connecting this pack for USB charging; see BATTERY.md. Do not use external DC input in this configuration.
 
 Route the short control harness along the side corridor with slack at the removable tray. Use detachable plugs and labels at both ends. Keep USB cable slack clear of screw bosses and the antenna. Begin at 100 kHz I²C; verify aggregate pull-ups and board helper operation. The terminal sends selections to its own UI and polls the existing API over Wi-Fi; it does not directly control the web browser.
 
@@ -54,14 +59,15 @@ Route the short control harness along the side corridor with slack at the remova
 6. **Build the tray outside the enclosure.** Use M2.5×16 screws, nuts/washers and 6 mm nylon spacers for MCP, ADC and perfboard. Slotted mount rows permit adjustment; confirm actual fixing holes and drill/adapt where required. Keep solder joints and metal fasteners clear of the tray and neighbouring traces.
 7. **Fit front and tray.** Attach front to shell using its four M3 face screws/nuts. Install tray onto the four shell supports, plug in labelled controls and I²C, and leave enough slack to remove it from the rear.
 8. **Fit USB and test while open.** Bolt the USB extension to its adapter with two M2.5 fixings and the adapter to the rear with two M3 fixings. Plug into the Waveshare USB port; ensure the lead is strain-relieved. Verify inputs, Wi-Fi, display and supply stability before fitting the rear.
-9. **Close and finish.** Secure the rear panel with four M3 screws/nuts, add rubber feet, and inspect cable clearance. Removing four rear screws gives service access without taking off knobs or switches.
+9. **Add rechargeable power.** Follow BATTERY.md to modify and verify the charger, fit the rear cradle and momentary button, and bench-test battery/USB transitions. Leave detachable service slack: the battery moves with the rear panel.
+10. **Close and finish.** Secure the rear panel with four M3 screws/nuts, add rubber feet, and inspect cable clearance. Removing four rear screws gives service access without taking off knobs or switches.
 
 ## BOM additions and revised budget
 
-Keep the revision B electronics. Add eight short M3 heat-set inserts, four M3×10 tray screws, four M3×8 retainer screws, two M3×10 USB-plate screws, two M2.5 USB-flange screws, six M2.5×16 board screws/nuts, six 6 mm nylon spacers and a small soft gasket/strain-relief set. Quantities and lengths are prototype selections; confirm the actual board holes and screw engagement. Allow approximately **£105–175 excluding filament/delivery** for the complete parts list. Purchased knobs and electronics are not printable STLs.
+Keep the revision B electronics. Add eight short M3 heat-set inserts, four M3×10 tray screws, four M3×8 retainer screws, two M3×10 USB-plate screws, two M2.5 USB-flange screws, six M2.5×16 board screws/nuts, six 6 mm nylon spacers and a small soft gasket/strain-relief set. Quantities and lengths are prototype selections; confirm the actual board holes and screw engagement. Allow approximately **£135–225 excluding filament/delivery and paid board rework** for the complete parts list. The battery additions are itemised in the current BOM. Purchased knobs and electronics are not printable STLs.
 
 ## Validation limits
 
-Fusion feature health and STL manifold/dimension checks are geometric checks. They do not validate physical fit, wire lengths, board-mount hole accuracy, connector pin order, electrical safety or an operating firmware build. Reference electronics and route envelopes intentionally simplify details. An assembled F3D and an inspection F3D with shell/rear hidden are included. Unhide `02 Ivory shell` and `03 Ivory rear cover` in Fusion to see the exterior again.
+Fusion feature health and STL manifold/dimension checks are geometric checks. They do not validate physical fit, wire lengths, board-mount hole accuracy, connector pin order, electrical safety or an operating firmware build. Reference electronics and route envelopes intentionally simplify details. Rev D adds battery/cradle/power-button interference checks against the simplified assembly. An assembled F3D and an inspection F3D with shell/rear hidden are included. Unhide `02 Ivory shell` and `03 Ivory rear cover` in Fusion to see the exterior again.
 
 Sources: [Waveshare module](https://www.waveshare.com/product/mcu-tools/esp32-s3-touch-lcd-4.htm), [board revision reference](https://github.com/waveshareteam/ESP32-S3-Touch-LCD-4/blob/main/hardware/HARDWARE_REFERENCE.md), [seesaw dimensions](https://www.adafruit.com/product/4991), [MCP dimensions](https://www.adafruit.com/product/5346), [ADC dimensions](https://www.adafruit.com/product/1085).

@@ -1,4 +1,4 @@
-# ORBIT revision C — bill of materials
+# ORBIT revision D — bill of materials
 
 Selected display: **Waveshare ESP32-S3-LCD-4, without touch, 4-inch square 480×480**. This board includes ESP32-S3, 16 MB flash and 8 MB PSRAM. Do not buy an additional DevKitC or the former 2.8-inch Adafruit TFT. ESP8266-12F is not needed in this build.
 
@@ -14,7 +14,7 @@ GBP ranges below are purchasing allowances, not live UK quotations. Shipping, ta
 | 1 | B10K linear panel potentiometer | £1–3 | 6 mm shaft, nominal 7 mm bushing |
 | 2 | M6-bushing SPST ON/OFF metal toggle switches | £3–6 total | LIVE/HOLD and GRID; contacts to logic ground |
 | 2 | 22 mm diameter, 6 mm-shaft grub-screw knobs | £3–8 total | Purchased hardware; CAD knobs are visual references |
-| 1 | Reputable USB 5 V, 2 A supply | £7–12 | USB power only for the prototype |
+| 1 | Reputable USB 5 V, 2 A supply | £7–12 | USB operating power and battery charging after current-setting modification |
 | 1 set | Matching USB cable and bolted panel extension | £5–10 | Match actual board connector; final adapter plate depends on extension |
 | 1 set | STEMMA QT/JST-SH leads, terminal-to-QT pigtail, wire, headers, perfboard, heat shrink | £6–12 | 3.3 V I²C harness; verify wire order |
 | 8 + 4 spare | M3×16 screws and M3 nuts | £3–6 | Front/rear through-boss fixings; spare fasteners for mounts |
@@ -22,7 +22,7 @@ GBP ranges below are purchasing allowances, not live UK quotations. Shipping, ta
 | 4 | Rubber feet | £1–3 | Stable tabletop base |
 | 1 + optional 1 | 100 nF pot filter; 470 µF ≥10 V bulk capacitor | £1–2 | Pot wiper filter; optional power bulk capacitance |
 
-**Budget: approximately £105–175 excluding filament and delivery.** Reuse suitable supplies, wire and fixings.
+**Battery version budget: approximately £135–225 excluding filament, delivery and any paid board rework.** Reuse suitable supplies, wire and fixings.
 
 ## Filament — Bambu P1S
 
@@ -50,4 +50,19 @@ The existing ILI9341/DevKitC starter is for revision A only; it must not be flas
 
 ## Revision C mechanical additions
 
-The electronics are unchanged. Add: 8 M3 heat inserts (approximately 4.6 mm OD×5 mm, confirm supplier), 4 M3×10 tray screws, 4 M3×8 display-retainer screws, 2 M3×10 USB-adapter screws, 2 M2.5 USB-extension screws, 6 M2.5×16 board screws/nuts, 6 nylon spacers (6 mm tall), soft PCB-edge gasket and strain relief. Allow £10–20 beyond revision B. See [assembly guide](ASSEMBLY.md) for exact mounting intent and fit checks.
+The revision C control electronics and mounts are retained. Add: 8 M3 heat inserts (approximately 4.6 mm OD×5 mm, confirm supplier), 4 M3×10 tray screws, 4 M3×8 display-retainer screws, 2 M3×10 USB-adapter screws, 2 M2.5 USB-extension screws, 6 M2.5×16 board screws/nuts, 6 nylon spacers (6 mm tall), soft PCB-edge gasket and strain relief. Allow £10–20 beyond revision B. See [assembly guide](ASSEMBLY.md) for exact mounting intent and fit checks.
+
+## Revision D rechargeable additions
+
+Use the **V4.0 Waveshare board** for this battery configuration. Read [battery integration and charger requirements](BATTERY.md) before purchasing or connecting the pack. The default V4 charge setting is approximately 2 A; the selected pack recommends no more than 1 A. This design requires a verified lower-current charger setting.
+
+| Qty | Item | GBP allowance | Selection / purpose |
+|---:|---|---:|---|
+| 1 | [Adafruit 354 protected 3.7 V 4400 mAh pack](https://www.adafruit.com/product/354) | £20–30 | Factory 1S parallel pack, 69×37×18 mm; 4.2 V charging, maximum recommended charge 1 A |
+| 1 | 220 kohm 1% SMD resistor, package matched to V4 R13 | £1–2 | Replaces 82 kohm charge-setting resistor; target ~0.8 A, verify by measurement; rework labour excluded |
+| 1 | 12 mm panel momentary NO pushbutton | £3–6 | Rear battery power key; generic CAD envelope, wire to verified board switch contacts |
+| 1 set | PH2.0 battery extension/adapter, detachable power-key lead, strain relief | £2–5 | Check battery polarity end-to-end; no assumption based on plug fit |
+| 1 set | 10 mm hook-and-loop strap, 1 mm insulating foam, 4 M3×12 screws/washers/nuts | £2–4 | Retain pack in removable printed cradle; check screw length |
+| 1 | Printed battery cradle | Filament above | Charcoal PLA; revise rear panel to accept four mount holes and power button |
+
+Additional purchasing allowance: approximately **£30–50** over revision C, excluding rework labour. No extra ESP controller, battery charger module or boost board is required by this architecture. A 4–6 hour runtime is a planning estimate, not a tested result. The exact charging/current/temperature and physical fit checks are listed in BATTERY.md.
