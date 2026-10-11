@@ -30,6 +30,7 @@ const state = {
   land: [],
   errors: {},
   clockOffset: 0,
+  groupSignature: "",
   lastScene: 0,
 };
 let sceneBusy = false,
@@ -114,12 +115,34 @@ function stationLabel() {
     ? `${state.observer.latitude_deg}°, ${state.observer.longitude_deg}°`
     : "Configure your location";
 }
+function renderGroups(groups) {
+  const signature = JSON.stringify(
+    groups.map(({ id, name, category }) => [id, name, category]),
+  );
+  if (signature === state.groupSignature) return;
+  const sections = new Map();
+  for (const group of groups) {
+    if (!sections.has(group.category)) {
+      const section = document.createElement("optgroup");
+      section.label = group.category;
+      sections.set(group.category, section);
+    }
+    const option = document.createElement("option");
+    option.value = group.id;
+    option.textContent = group.name;
+    sections.get(group.category).append(option);
+  }
+  $("group-select").replaceChildren(...sections.values());
+  $("group-select").value = state.group;
+  state.groupSignature = signature;
+}
 async function status() {
   try {
     const start = Date.now(),
       data = await api("status");
     state.clockOffset = Date.parse(data.utc) - (start + Date.now()) / 2;
     state.observer = data.observer;
+    renderGroups(data.groups);
     stationLabel();
     error("connection");
     $("connection").textContent = "SYSTEM ONLINE";

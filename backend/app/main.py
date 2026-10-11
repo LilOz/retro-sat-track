@@ -20,7 +20,7 @@ from app.schemas import (
     SceneResponse,
     StatusResponse,
 )
-from app.tracking.catalog import GROUPS, Catalog, CatalogUnavailable
+from app.tracking.catalog import GROUP_SECTIONS, Catalog, CatalogUnavailable
 from app.tracking.propagation import PropagationError, Tracker, iso, utcnow
 from app.tracking.visibility import PassPredictor
 
@@ -82,8 +82,14 @@ def create_app(
             "propagator": "SGP4 / Skyfield",
             "observer": saved,
             "groups": [
-                {"id": key, "name": name, **catalog.freshness(key)}
-                for key, name in GROUPS.items()
+                {
+                    "id": key,
+                    "name": name,
+                    "category": category,
+                    **catalog.freshness(key),
+                }
+                for category, groups in GROUP_SECTIONS.items()
+                for key, name in groups.items()
             ],
         }
 

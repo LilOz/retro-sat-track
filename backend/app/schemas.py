@@ -2,7 +2,55 @@
 
 from typing import Literal, NotRequired, TypedDict
 
-type Group = Literal["stations", "starlink", "science", "gps-ops"]
+type Group = Literal[
+    "stations",
+    "visual",
+    "active",
+    "last-30-days",
+    "analyst",
+    "weather",
+    "resource",
+    "sar",
+    "sarsat",
+    "dmc",
+    "tdrss",
+    "argos",
+    "planet",
+    "spire",
+    "starlink",
+    "oneweb",
+    "kuiper",
+    "qianfan",
+    "hulianwang",
+    "geo",
+    "intelsat",
+    "ses",
+    "eutelsat",
+    "telesat",
+    "iridium-NEXT",
+    "orbcomm",
+    "globalstar",
+    "amateur",
+    "satnogs",
+    "x-comm",
+    "other-comm",
+    "gnss",
+    "gps-ops",
+    "glo-ops",
+    "galileo",
+    "beidou",
+    "sbas",
+    "science",
+    "geodetic",
+    "engineering",
+    "education",
+    "cubesat",
+    "military",
+    "radar",
+    "fengyun-1c-debris",
+    "iridium-33-debris",
+    "cosmos-2251-debris",
+]
 type OrbitalNumber = float | str
 
 
@@ -41,8 +89,9 @@ class CatalogFreshness(TypedDict):
 
 
 class GroupFreshness(CatalogFreshness):
-    id: str
+    id: Group
     name: str
+    category: str
 
 
 class ObserverData(TypedDict):

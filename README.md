@@ -27,7 +27,19 @@ Select **Set ground station** and enter your name, latitude, longitude and eleva
 - **02 / Telemetry:** altitude, inertial velocity, mean inclination, period, latitude/longitude, eccentricity, estimated mean orbital phase and observer look angles. Charts accumulate real samples during the current session.
 - **03 / Pass prediction:** 48-hour forecast with rise, culmination and set, maximum elevation, compass directions, duration and a polar sky plot. Select a row to inspect its path; choose an elevation mask from 0 to 30 degrees.
 
-Groups: **space stations, Starlink, science and operational GPS**. Search by name or NORAD ID and load more results. The globe shows up to 12 representative objects including the selection. OMM JSON supports six-digit and larger catalog IDs.
+The catalog selector offers **47 CelesTrak groups**, organized into seven sections:
+
+- **Popular & recent:** space stations, brightest objects, active satellites, recent launches and analyst satellites.
+- **Weather & Earth observation:** weather, Earth resources, radar imaging, search/rescue, disaster monitoring, TDRSS, ARGOS, Planet and Spire.
+- **Communications:** Starlink, OneWeb, Kuiper, Qianfan, Hulianwang Digui, geosynchronous satellites, Intelsat, SES, Eutelsat, Telesat, Iridium NEXT, Orbcomm, Globalstar, amateur radio, SatNOGS and experimental/other communications.
+- **Navigation:** GNSS, operational GPS/GLONASS, Galileo, BeiDou and augmentation systems.
+- **Science & education:** space/Earth science, geodetic, engineering, education and CubeSats.
+- **Military & calibration:** military and radar calibration.
+- **Debris:** Fengyun 1C, Iridium 33 and Cosmos 2251 debris.
+
+Categories use [CelesTrak's published GP groups](https://celestrak.org/NORAD/elements/), so membership can differ from N2YO's categories. Groups can overlap and some include rocket bodies or debris. A group downloads only when requested; listing categories does not fetch every catalog. The browser builds its selector from `/api/v1/status` group IDs, names and category sections.
+
+Search by name or NORAD ID and load more results. The globe shows up to 12 representative objects including the selection. OMM JSON supports six-digit and larger catalog IDs.
 
 Keyboard: **1 / 2 / 3** switch pages; **left / right arrows** cycle listed objects. CRT texture and fullscreen are optional. Reduced-motion preferences disable automatic rotation. The layout adapts to narrower displays.
 
@@ -66,7 +78,7 @@ Runtime files live in ignored `.data/`; override with `SAT_TRACK_DATA_DIR`. Firm
 
 ## API for a future ESP client
 
-Interactive docs: **http://127.0.0.1:8000/docs**. Fields include units in their names; UTC timestamps are ISO 8601. Satellite endpoints default to `group=stations`; use `group=starlink`, `science` or `gps-ops` as needed.
+Interactive docs: **http://127.0.0.1:8000/docs**. Fields include units in their names; UTC timestamps are ISO 8601. Satellite endpoints default to `group=stations`; use IDs such as `starlink`, `weather`, `amateur`, `cubesat` or `galileo` as needed. `GET /api/v1/status` lists every supported group with its name and category section.
 
 | Endpoint | Purpose |
 | --- | --- |

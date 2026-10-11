@@ -15,16 +15,79 @@ from app.schemas import (
     CatalogAttempt,
     CatalogFreshness,
     CatalogSnapshot,
+    Group,
     OrbitalElements,
 )
 
 type CatalogFetcher = Callable[[str], object]
 
-GROUPS = {
-    "stations": "Space stations",
-    "starlink": "Starlink",
-    "science": "Science",
-    "gps-ops": "GPS",
+# Published GP groups: https://celestrak.org/NORAD/elements/
+# This registry supplies API metadata and the browser's grouped selector.
+GROUP_SECTIONS: dict[str, dict[Group, str]] = {
+    "Popular & recent": {
+        "stations": "Space stations",
+        "visual": "Brightest objects",
+        "active": "Active satellites",
+        "last-30-days": "Recent launches / 30 days",
+        "analyst": "Analyst satellites",
+    },
+    "Weather & Earth observation": {
+        "weather": "Weather",
+        "resource": "Earth resources",
+        "sar": "Synthetic aperture radar",
+        "sarsat": "Search & rescue / SARSAT",
+        "dmc": "Disaster monitoring",
+        "tdrss": "Tracking & data relay / TDRSS",
+        "argos": "ARGOS data collection",
+        "planet": "Planet",
+        "spire": "Spire",
+    },
+    "Communications": {
+        "starlink": "Starlink",
+        "oneweb": "OneWeb",
+        "kuiper": "Kuiper",
+        "qianfan": "Qianfan",
+        "hulianwang": "Hulianwang Digui",
+        "geo": "Active geosynchronous",
+        "intelsat": "Intelsat",
+        "ses": "SES",
+        "eutelsat": "Eutelsat",
+        "telesat": "Telesat",
+        "iridium-NEXT": "Iridium NEXT",
+        "orbcomm": "Orbcomm",
+        "globalstar": "Globalstar",
+        "amateur": "Amateur radio",
+        "satnogs": "SatNOGS",
+        "x-comm": "Experimental communications",
+        "other-comm": "Other communications",
+    },
+    "Navigation": {
+        "gnss": "All navigation / GNSS",
+        "gps-ops": "GPS operational",
+        "glo-ops": "GLONASS operational",
+        "galileo": "Galileo",
+        "beidou": "BeiDou",
+        "sbas": "Satellite navigation augmentation",
+    },
+    "Science & education": {
+        "science": "Space & Earth science",
+        "geodetic": "Geodetic",
+        "engineering": "Engineering",
+        "education": "Education",
+        "cubesat": "CubeSats",
+    },
+    "Military & calibration": {
+        "military": "Military",
+        "radar": "Radar calibration",
+    },
+    "Debris": {
+        "fengyun-1c-debris": "Fengyun 1C debris",
+        "iridium-33-debris": "Iridium 33 debris",
+        "cosmos-2251-debris": "Cosmos 2251 debris",
+    },
+}
+GROUPS: dict[Group, str] = {
+    key: name for section in GROUP_SECTIONS.values() for key, name in section.items()
 }
 REFRESH_SECONDS = 2 * 60 * 60
 MAX_ELEMENT_AGE_DAYS = 7
