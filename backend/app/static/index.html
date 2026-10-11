@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111713" />
+    <title>ORBIT — Satellite tracking terminal</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%23b4f49d' stroke-width='3'/%3E%3Cellipse cx='32' cy='32' rx='30' ry='10' fill='none' stroke='%23b4f49d' stroke-width='3' transform='rotate(-35 32 32)'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/static/style.css" />
+    <script type="module" src="/static/app.js"></script>
+  </head>
+  <body>
+    <div class="terminal">
+      <header class="masthead">
+        <a class="brand" href="/" aria-label="ORBIT home"
+          ><svg viewBox="0 0 48 48" aria-hidden="true">
+            <circle cx="24" cy="24" r="13" />
+            <ellipse
+              cx="24"
+              cy="24"
+              rx="22"
+              ry="7"
+              transform="rotate(-35 24 24)"
+            />
+            <circle cx="40" cy="13" r="2.5" class="sat-dot" /></svg
+          ><span
+            >ORBIT<span class="brand-sub"
+              >SATELLITE TRACKING TERMINAL</span
+            ></span
+          ></a
+        >
+        <div class="header-status">
+          <span id="connection" class="status-light pending">CONNECTING</span>
+          <div class="clock">
+            <span id="utc-clock">--:--:--</span
+            ><small>UTC / <span id="utc-date">----.--.--</span></small>
+          </div>
+        </div>
+      </header>
+      <nav class="page-nav" aria-label="Terminal pages">
+        <button class="page-tab active" data-page="orbit" aria-current="page">
+          <span>01</span> ORBITAL SITUATION
+        </button>
+        <button class="page-tab" data-page="telemetry">
+          <span>02</span> TELEMETRY
+        </button>
+        <button class="page-tab" data-page="passes">
+          <span>03</span> PASS PREDICTION
+        </button>
+        <button id="station-button" class="station-button">
+          <span class="crosshair">⌖</span>
+          <span id="station-label">SET GROUND STATION</span><span>↗</span>
+        </button>
+      </nav>
+      <div id="error-banner" class="error-banner" role="status" hidden></div>
+      <section class="target-bar" aria-label="Satellite selection">
+        <div class="target-title">
+          <span class="eyebrow">TRACKING OBJECT</span>
+          <h1 id="target-name">
+            Acquiring catalog<span class="cursor">_</span>
+          </h1>
+          <span class="target-id"
+            >NORAD <span id="target-id">-----</span>
+            <span class="separator">/</span>
+            <span id="target-group">SPACE STATIONS</span></span
+          >
+        </div>
+        <div class="target-controls">
+          <label class="control-label"
+            >CATALOG<select id="group-select">
+              <option value="stations">Space stations</option>
+            </select></label
+          ><button id="catalog-button" class="outline-button">
+            SELECT OBJECT <span>⌄</span></button
+          ><button
+            id="previous-satellite"
+            class="square-button"
+            aria-label="Previous satellite"
+          >
+            ←</button
+          ><button
+            id="next-satellite"
+            class="square-button"
+            aria-label="Next satellite"
+          >
+            →
+          </button>
+        </div>
+      </section>
+      <main>
+        <section
+          id="page-orbit"
+          class="page active"
+          aria-label="Orbital situation"
+        >
+          <div class="orbit-layout">
+            <section class="panel globe-panel">
+              <div class="panel-heading">
+                <h2>
+                  <span class="little-square"></span> EARTH / ORBITAL VIEW
+                </h2>
+                <span class="micro">SGP4 PROPAGATION</span>
+              </div>
+              <div class="globe-stage">
+                <canvas
+                  id="globe"
+                  aria-label="Interactive Earth globe with current satellite positions and selected orbit"
+                ></canvas>
+                <div class="globe-corner top-left">
+                  <span class="live-label">● PROPAGATED LIVE</span
+                  ><span>EARTH FIXED / WGS84</span>
+                </div>
+                <div class="globe-corner bottom-left">
+                  <span id="scene-count">0 OBJECTS IN VIEW</span
+                  ><span>DRAG TO ROTATE · SCROLL TO ZOOM</span>
+                </div>
+                <div class="globe-corner bottom-right">
+                  <button
+                    id="rotate-button"
+                    class="small-button"
+                    aria-pressed="true"
+                  >
+                    ↻ AUTO ROTATE</button
+                  ><button id="focus-button" class="small-button">
+                    ⌖ FIND OBJECT
+                  </button>
+                </div>
+                <div id="globe-empty" class="canvas-empty">
+                  ACQUIRING ORBITAL ELEMENTS…
+                </div>
+              </div>
+              <div class="globe-legend">
+                <span><i class="legend-dot amber"></i> SELECTED OBJECT</span
+                ><span><i class="legend-line"></i> ORBIT</span
+                ><span><i class="legend-line dashed"></i> GROUND TRACK</span
+                ><span class="scale-label">REAL ALTITUDE SCALE</span>
+              </div>
+            </section>
+            <aside class="orbit-sidebar">
+              <section class="panel live-panel">
+                <div class="panel-heading">
+                  <h2>LIVE TELEMETRY</h2>
+                  <span class="micro">Δt 3s</span>
+                </div>
+                <div class="metric-stack">
+                  <div class="metric">
+                    <span>ORBITAL ALTITUDE</span>
+                    <div>
+                      <strong data-value="altitude_km">—</strong
+                      ><small>km</small>
+                    </div>
+                    <div class="metric-rule"></div>
+                  </div>
+                  <div class="metric">
+                    <span>VELOCITY</span>
+                    <div>
+                      <strong data-value="velocity_km_s">—</strong
+                      ><small>km/s</small>
+                    </div>
+                    <div class="metric-rule"></div>
+                  </div>
+                  <div class="metric-pair">
+                    <div>
+                      <span>INCLINATION</span
+                      ><strong data-value="inclination_deg">—</strong
+                      ><small>°</small>
+                    </div>
+                    <div>
+                      <span>ORBITAL PERIOD</span
+                      ><strong data-value="period_minutes">—</strong
+                      ><small>min</small>
+                    </div>
+                  </div>
+                  <dl class="position-readout">
+                    <div>
+                      <dt>LATITUDE</dt>
+                      <dd data-value="latitude_deg">—</dd>
+                    </div>
+                    <div>
+                      <dt>LONGITUDE</dt>
+                      <dd data-value="longitude_deg">—</dd>
+                    </div>
+                    <div>
+                      <dt>ELEMENT AGE</dt>
+                      <dd id="element-age">—</dd>
+                    </div>
+                  </dl>
+                </div>
+              </section>
+              <section class="panel next-pass-panel">
+                <div class="panel-heading">
+                  <h2>
+                    <span id="pass-led" class="pass-led"></span> NEXT CONTACT
+                  </h2>
+                  <button
+                    id="view-passes"
+                    class="text-button"
+                    aria-label="View pass predictions"
+                  >
+                    ↗
+                  </button>
+                </div>
+                <p id="next-pass-label" class="eyebrow">
+                  SET YOUR GROUND STATION
+                </p>
+                <div id="pass-countdown" class="countdown">--:--:--</div>
+                <div class="pass-preview">
+                  <span id="next-pass-time">Local horizon forecast</span
+                  ><span id="next-pass-elevation">—</span>
+                </div>
+              </section>
+            </aside>
+          </div>
+          <section class="panel event-panel">
+            <div class="panel-heading">
+              <h2>EVENT LOG</h2>
+              <span class="micro">LOCAL TERMINAL</span>
+            </div>
+            <div
+              id="event-log"
+              class="event-log"
+              role="log"
+              aria-live="off"
+            ></div>
+          </section>
+        </section>
+        <section id="page-telemetry" class="page" aria-label="Telemetry">
+          <div class="section-intro">
+            <span class="eyebrow">SPACECRAFT TELEMETRY</span>
+            <h2>Numbers from orbit.</h2>
+            <p>
+              Computed locally from CelesTrak orbital elements. Updates every
+              three seconds.
+            </p>
+          </div>
+          <div class="telemetry-cards">
+            <div class="panel big-metric">
+              <span>01 / ALTITUDE</span>
+              <div>
+                <strong data-value="altitude_km">—</strong><small>km</small>
+              </div>
+              <canvas
+                id="altitude-chart"
+                aria-label="Altitude measurements during this session"
+              ></canvas>
+            </div>
+            <div class="panel big-metric">
+              <span>02 / VELOCITY</span>
+              <div>
+                <strong data-value="velocity_km_s">—</strong><small>km/s</small>
+              </div>
+              <canvas
+                id="velocity-chart"
+                aria-label="Velocity measurements during this session"
+              ></canvas>
+            </div>
+            <div class="panel big-metric">
+              <span>03 / INCLINATION</span>
+              <div>
+                <strong data-value="inclination_deg">—</strong><small>°</small>
+              </div>
+              <p>Mean orbital plane tilt<br />relative to Earth's equator</p>
+            </div>
+            <div class="panel big-metric">
+              <span>04 / PERIOD</span>
+              <div>
+                <strong data-value="period_minutes">—</strong><small>min</small>
+              </div>
+              <p>One revolution<br />from mean motion</p>
+            </div>
+          </div>
+          <div class="telemetry-bottom">
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>POSITION & ORBITAL ELEMENTS</h2>
+                <span class="micro">WGS84</span>
+              </div>
+              <dl class="detail-list">
+                <div>
+                  <dt>Latitude</dt>
+                  <dd data-value="latitude_deg">—</dd>
+                </div>
+                <div>
+                  <dt>Longitude</dt>
+                  <dd data-value="longitude_deg">—</dd>
+                </div>
+                <div>
+                  <dt>Mean orbital phase <small>estimated</small></dt>
+                  <dd><span data-value="mean_orbital_phase_deg">—</span>°</dd>
+                </div>
+                <div>
+                  <dt>Eccentricity</dt>
+                  <dd data-value="eccentricity">—</dd>
+                </div>
+                <div>
+                  <dt>Element epoch / UTC</dt>
+                  <dd id="epoch-time">—</dd>
+                </div>
+                <div>
+                  <dt>Altitude reference</dt>
+                  <dd>WGS84 ellipsoid</dd>
+                </div>
+                <div>
+                  <dt>Velocity reference</dt>
+                  <dd>Geocentric inertial</dd>
+                </div>
+              </dl>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>GROUND STATION LOOK ANGLES</h2>
+                <span id="horizon-status" class="micro">UNCONFIGURED</span>
+              </div>
+              <dl class="detail-list">
+                <div>
+                  <dt>Azimuth</dt>
+                  <dd><span data-value="azimuth_deg">—</span>°</dd>
+                </div>
+                <div>
+                  <dt>Elevation</dt>
+                  <dd><span data-value="elevation_deg">—</span>°</dd>
+                </div>
+                <div>
+                  <dt>Slant range</dt>
+                  <dd><span data-value="range_km">—</span> km</dd>
+                </div>
+              </dl>
+              <p class="panel-note">
+                Look angles use your saved ground station. Session charts
+                accumulate real samples while this terminal is open.
+              </p>
+              <button class="outline-button configure-station">
+                CONFIGURE STATION ↗
+              </button>
+            </section>
+          </div>
+        </section>
+        <section id="page-passes" class="page" aria-label="Pass predictions">
+          <div class="section-intro pass-intro">
+            <div>
+              <span class="eyebrow">GROUND STATION / CONTACT FORECAST</span>
+              <h2>Your next window to orbit.</h2>
+              <p>Geometric passes over the next 48 hours. All times are UTC.</p>
+            </div>
+            <label class="control-label"
+              >MINIMUM ELEVATION<select id="elevation-mask">
+                <option value="0">0° / Horizon</option>
+                <option value="10" selected>10° / Clear horizon</option>
+                <option value="20">20°</option>
+                <option value="30">30°</option>
+              </select></label
+            >
+          </div>
+          <div class="passes-layout">
+            <section class="panel sky-panel">
+              <div class="panel-heading">
+                <h2>LOCAL SKY / SELECTED PASS</h2>
+                <span class="micro">ZENITH AT CENTER</span>
+              </div>
+              <canvas
+                id="sky-plot"
+                aria-label="Polar sky plot showing the selected pass from rise to set"
+              ></canvas>
+              <div class="sky-caption">
+                <span id="sky-direction">AWAITING FORECAST</span
+                ><span id="sky-peak">—</span>
+              </div>
+            </section>
+            <section class="panel pass-table-panel">
+              <div class="panel-heading">
+                <h2>UPCOMING CONTACTS</h2>
+                <span id="pass-count" class="micro">—</span>
+              </div>
+              <div id="pass-empty" class="empty-state">
+                <span>⌖</span>
+                <h3>Establish your ground station.</h3>
+                <p>
+                  Enter your location to calculate rise, culmination and set
+                  times for this spacecraft.
+                </p>
+                <button class="outline-button configure-station">
+                  SET LOCATION ↗
+                </button>
+              </div>
+              <div class="table-scroll">
+                <table id="pass-table" hidden>
+                  <thead>
+                    <tr>
+                      <th>RISE / UTC</th>
+                      <th>MAX EL.</th>
+                      <th>DIRECTION</th>
+                      <th>DURATION</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pass-rows"></tbody>
+                </table>
+              </div>
+              <div id="pass-detail" class="pass-detail" hidden></div>
+            </section>
+          </div>
+          <p class="forecast-note">
+            <span>ⓘ</span> A geometric pass is a line-of-sight opportunity.
+            Sunlight, darkness, terrain and weather are not evaluated; optical
+            visibility is not guaranteed.
+          </p>
+        </section>
+      </main>
+      <footer>
+        <span><i class="footer-dot"></i> ORBIT / LOCAL TRACKING STATION</span
+        ><span id="freshness">CELESTRAK / WAITING FOR ELEMENTS</span
+        ><span
+          >TERMINAL v0.1 <span class="footer-divider">│</span>
+          <button id="effects-button" aria-pressed="true">CRT ON</button>
+          <button id="fullscreen-button" aria-label="Toggle fullscreen">
+            ⛶
+          </button></span
+        >
+      </footer>
+    </div>
+    <dialog id="catalog-dialog">
+      <div class="dialog-heading">
+        <div>
+          <span class="eyebrow">SPACECRAFT DIRECTORY</span>
+          <h2>Select a tracking object.</h2>
+        </div>
+        <button
+          class="close-dialog square-button"
+          aria-label="Close satellite selection"
+        >
+          ×
+        </button>
+      </div>
+      <label class="search-label"
+        >SEARCH NAME OR NORAD ID<input
+          id="satellite-search"
+          type="search"
+          placeholder="ISS, STARLINK, 25544…"
+          autocomplete="off"
+      /></label>
+      <p id="catalog-count" class="micro">Loading catalog…</p>
+      <div id="satellite-list" class="satellite-list"></div>
+      <button id="load-more" class="outline-button" hidden>
+        LOAD MORE OBJECTS
+      </button>
+    </dialog>
+    <dialog id="station-dialog">
+      <form id="station-form">
+        <div class="dialog-heading">
+          <div>
+            <span class="eyebrow">OBSERVER CONFIGURATION</span>
+            <h2>Establish your ground station.</h2>
+          </div>
+          <button
+            type="button"
+            class="close-dialog square-button"
+            aria-label="Close ground station configuration"
+          >
+            ×
+          </button>
+        </div>
+        <p class="dialog-note">
+          Your coordinates stay on this PC. They determine the local horizon and
+          upcoming passes.
+        </p>
+        <label
+          >STATION NAME<input
+            id="observer-name"
+            name="name"
+            maxlength="64"
+            value="Home station"
+            required
+        /></label>
+        <div class="form-grid">
+          <label
+            >LATITUDE / °<input
+              id="observer-lat"
+              name="latitude_deg"
+              type="number"
+              step="any"
+              min="-90"
+              max="90"
+              placeholder="51.5074"
+              required /></label
+          ><label
+            >LONGITUDE / °<input
+              id="observer-lon"
+              name="longitude_deg"
+              type="number"
+              step="any"
+              min="-180"
+              max="180"
+              placeholder="-0.1278"
+              required
+          /></label>
+        </div>
+        <label
+          >ELEVATION / METRES<input
+            id="observer-elevation"
+            name="elevation_m"
+            type="number"
+            step="any"
+            min="-500"
+            max="9000"
+            value="0"
+            required
+        /></label>
+        <p class="dialog-note">
+          North and east are positive. South and west are negative.
+        </p>
+        <p id="station-error" class="form-error" role="status"></p>
+        <button id="save-station" type="submit" class="primary-button">
+          SAVE GROUND STATION ↗
+        </button>
+      </form>
+    </dialog>
+  </body>
+</html>
