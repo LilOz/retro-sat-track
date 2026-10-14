@@ -1,68 +1,54 @@
-# ORBIT revision D — bill of materials
+# ORBIT revision E — bill of materials
 
-Selected display: **Waveshare ESP32-S3-LCD-4, without touch, 4-inch square 480×480**. This board includes ESP32-S3, 16 MB flash and 8 MB PSRAM. Do not buy an additional DevKitC or the former 2.8-inch Adafruit TFT. ESP8266-12F is not needed in this build.
+Selected display: **Adafruit 2050, 3.5-inch 480×320 HX8357D TFT breakout**, mounted landscape. This build uses a separate **ESP32-S3-DevKitC-1 N8R8**, a PowerBoost 1000C and the protected rechargeable pack. ESP8266-12F is not used. Rev E replaces the Waveshare board and the seesaw/MCP23017/ADS1115 interfaces with direct GPIO controls.
 
-GBP ranges below are purchasing allowances, not live UK quotations. Shipping, tax and reseller pricing vary. Quantities and allowances refer to one terminal.
+GBP ranges are planning allowances, not live UK quotations. Quantities cover one terminal; delivery and filament are additional.
 
-| Qty | Item | GBP allowance | Selection / purpose |
-|---:|---|---:|---|
-| 1 | [Waveshare ESP32-S3-LCD-4 without touch](https://www.waveshare.com/product/mcu-tools/esp32-s3-touch-lcd-4.htm) | £25–40 | Square 480×480 RGB IPS display and controller in one module; verify revision |
-| 1 | [Adafruit seesaw encoder breakout 4991](https://www.adafruit.com/product/4991) | £6–10 | I²C encoder counting; encoder not included |
-| 1 | [Adafruit MCP23017 breakout 5346](https://www.adafruit.com/product/5346) | £8–12 | Reads two toggle switches via I²C |
-| 1 | [Adafruit ADS1115 breakout 1085](https://www.adafruit.com/product/1085) | £12–18 | Reads the analogue dial via I²C |
-| 1 | Panel-mount PEC11-pinout incremental encoder with push | £2–5 | Compatible with 4991; 6 mm shaft, nominal 7 mm bushing; verify exact footprint/thread |
-| 1 | B10K linear panel potentiometer | £1–3 | 6 mm shaft, nominal 7 mm bushing |
-| 2 | M6-bushing SPST ON/OFF metal toggle switches | £3–6 total | LIVE/HOLD and GRID; contacts to logic ground |
-| 2 | 22 mm diameter, 6 mm-shaft grub-screw knobs | £3–8 total | Purchased hardware; CAD knobs are visual references |
-| 1 | Reputable USB 5 V, 2 A supply | £7–12 | USB operating power and battery charging after current-setting modification |
-| 1 set | Matching USB cable and bolted panel extension | £5–10 | Match actual board connector; final adapter plate depends on extension |
-| 1 set | STEMMA QT/JST-SH leads, terminal-to-QT pigtail, wire, headers, perfboard, heat shrink | £6–12 | 3.3 V I²C harness; verify wire order |
-| 8 + 4 spare | M3×16 screws and M3 nuts | £3–6 | Front/rear through-boss fixings; spare fasteners for mounts |
-| 4 | Display-mount screws and nylon spacers, size pending drawing | £2–4 | Do not order hole size from the CAD proxy |
-| 4 | Rubber feet | £1–3 | Stable tabletop base |
-| 1 + optional 1 | 100 nF pot filter; 470 µF ≥10 V bulk capacitor | £1–2 | Pot wiper filter; optional power bulk capacitance |
+| Qty   | Item                                                                                                                                  | GBP allowance | Selection / purpose                                                                                  |
+| ----: | ------------------------------------------------------------------------------------------------------------------------------------- | ------------: | ---------------------------------------------------------------------------------------------------- |
+| 1     | [Adafruit 2050 TFT](https://www.adafruit.com/product/2050)                                                                            | £35–45        | 480×320, HX8357D, SPI; close IM2 jumper; resistive touch/SD unused                                   |
+| 1     | [ESP32-S3-DevKitC-1 N8R8](https://documentation.espressif.com/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.0.html) | £15–25        | 8 MB flash, 8 MB octal PSRAM; buy the specified variant and check outline                            |
+| 1     | [Adafruit PowerBoost 1000C, 2465](https://www.adafruit.com/product/2465)                                                              | £18–25        | Load-sharing 1 A Li-ion charger and nominal 5.2 V boost; omit optional USB-A socket                  |
+| 1     | [Adafruit 354 protected 3.7 V 4400 mAh pack](https://www.adafruit.com/product/354)                                                    | £20–30        | Factory 1S parallel pack, 69×37×18 mm; maximum recommended charging 1 A                              |
+| 1     | Panel incremental encoder with push, 6 mm shaft                                                                                       | £2–5          | Nominal 7 mm threaded bushing, body within 13×13×17 mm; A/B/push to GPIO                             |
+| 1     | B10K linear panel potentiometer                                                                                                       | £1–3          | 6 mm shaft, nominal 7 mm threaded bushing, body ≤17 mm diameter                                      |
+| 2     | M6-bushing SPST ON/OFF metal toggles                                                                                                  | £3–6 total    | HOLD and GRID; contacts close to GND                                                                 |
+| 2     | 22 mm diameter knobs for 6 mm shafts                                                                                                  | £3–8 total    | Grub-screw type; purchased, not printed                                                              |
+| 1     | 12 mm **latching SPST** rear pushbutton                                                                                               | £3–6          | EN-to-GND power control; body ≤14 mm diameter ×12 mm deep, bushing suits 3 mm panel                  |
+| 1     | Reputable USB 5 V, 2 A supply                                                                                                         | £7–12         | Charging input to PowerBoost micro-USB                                                               |
+| 1 set | Charge cable and bolted panel USB extension ending in micro-USB male                                                                  | £5–10         | Generic adapter models 16×9 mm cutout / 24 mm flange pitch; measure purchased extension              |
+| 1 set | 33×61 mm trimmed perfboard, two 22-way 2.54 mm female sockets, headers, wire, plugs, heat shrink                                      | £8–14         | Socket carrier, detachable controls, battery lead, switch lead and removable 2-pin system-power link |
+| 1 set | 2N3904, 47 kΩ, 1 MΩ, two 10 kΩ resistors, 100 nF capacitor                                                                            | £1–3          | LBO level translator, SD CS pull-up and pot filter; see wiring                                       |
+| 1 set | Fixings and spacers listed below                                                                                                      | £8–14         | Display, tray, charger, battery and case assembly                                                    |
+| 4     | Rubber feet                                                                                                                           | £1–3 total    | Tabletop base                                                                                        |
+| 1 set | 10 mm hook-and-loop strap and 1 mm insulating foam                                                                                    | £2–4          | Soft battery retention, strain relief                                                                |
 
-**Battery version budget: approximately £135–225 excluding filament, delivery and any paid board rework.** Reuse suitable supplies, wire and fixings.
+**Allow approximately £135–215, excluding filament and delivery.** Reuse suitable supplies and fixings. No Waveshare charge-current resistor rework is required in this revision.
 
-## Filament — Bambu P1S
+## Fixings
 
-- **Bambu PLA Matte Ivory White (11100):** shell, front and rear.
-- **Bambu PLA Matte Charcoal:** bezel and electronics tray.
-- Optional **Matte Latte Brown (11800):** future chin insert, not required for revision B.
+| Qty   | Starting specification                             | Location / fit check                                                      |
+| ----: | -------------------------------------------------- | ------------------------------------------------------------------------- |
+| 4     | M3 heat inserts, approximately 4.6 mm OD ×5 mm     | Shell tray supports: 4.4 mm pilot ×5 mm; calibrate with supplier's insert |
+| 4     | M2.5 heat inserts, approximately 3.5 mm OD ×4 mm   | Front display bosses: 3.3 mm pilot ×4 mm; calibrate before fitting        |
+| 4     | M2.5×5 screws and thin nylon washers               | TFT mounting tabs into front inserts; verify engagement and no bottoming  |
+| 4     | M3×10 screws                                       | Tray into shell inserts                                                   |
+| 6     | M2.5×16 screws/nuts/washers and 6 mm nylon spacers | Four carrier mounts and two PowerBoost mounts                             |
+| 4     | M3×12 screws/nuts/washers                          | Battery cradle to rear cover                                              |
+| 8     | M3×16 screws/nuts                                  | Four front and four rear through-boss fixings                             |
+| 2 + 2 | M3 adapter screws/nuts and M2.5 USB-flange fixings | Lengths to suit extension flange, rear and 2 mm adapter                   |
 
-Print separate colour parts; AMS is optional. Buy one spool of ivory and one charcoal if none in stock. Planning allowance 300–450 g combined including margins/supports; actual use comes from the slicer. No green filament: the screen supplies the green. [Bambu PLA Matte colour range](https://bambu-lab-global.myshopify.com/products/pla-matte).
+Fastener lengths are prototype selections. Verify engagement, nut access and clearance from traces and the battery before tightening. Print an insert/display fit coupon before full panels.
 
-## Wiring architecture
+## PLA colours — Bambu P1S
 
-Waveshare external I²C terminal → shared 3.3 V SDA/SCL/GND rail → seesaw 4991 + MCP23017 + ADS1115. Configure the board's I²C supply selector to **3.3 V** and confirm with a meter. Do not assume the terminal ships set that way. Keep leads short and check combined pull-up resistance on the chained breakouts.
+- **Bambu PLA Matte Ivory White:** front, shell and rear cover.
+- **Bambu PLA Matte Charcoal:** landscape bezel, electronics tray, USB adapter and battery cradle.
 
-| Device | Planned address | Connection |
-|---|---|---|
-| Encoder seesaw | 0x36 | Compatible encoder A/B/push on its dedicated encoder footprint; it counts locally |
-| MCP23017 | 0x20 | GPA0 HOLD, GPA1 GRID; internal pull-ups, SPST contacts to GND |
-| ADS1115 | 0x48 | A0 pot wiper; pot ends 3V3/GND; 100 nF wiper to GND; input range ±4.096 V |
+Separate parts allow both colours without AMS. Start with one spool of each if needed; allow roughly 300–450 g combined including supports, then use the slicer's actual estimate. The display provides the green. [Bambu PLA Matte range](https://uk.store.bambulab.com/products/pla-matte).
 
-Scan and confirm addresses before bringing up the UI. V4.0 Waveshare documentation lists its helper controller at 0x24 and RTC at 0x51, so these planned addresses do not overlap. GPIO mapping varies by revision: V4.0 shared I²C is SDA15/SCL7, while earlier documentation used different pins. Use the exact purchased board's BSP and schematic, not the former DevKitC pin table. [First-party hardware reference](https://github.com/waveshareteam/ESP32-S3-Touch-LCD-4/blob/main/hardware/HARDWARE_REFERENCE.md).
+## Wiring and firmware
 
-## Firmware consequence
+Use the [Rev E assembly pin map](ASSEMBLY.md) and [power wiring](BATTERY.md). All GPIO signalling is 3.3 V. TFT Vin and ESP32 5V share the removable PowerBoost output link. Do not power the ESP32 from the TFT's 3Vo output. PowerBoost LBO needs the specified transistor level translator; it is not a GPIO-safe signal.
 
-The existing ILI9341/DevKitC starter is for revision A only; it must not be flashed onto this board. Port the network/model tasks onto Waveshare's revision-matched RGB LCD BSP and 480×480 LVGL UI. Poll seesaw position and push at 50 Hz, switches at 50 Hz with 25 ms debounce, ADS1115 at 20 Hz with filtering/hysteresis. Use the same shared-bus mutex as the display helper/RTC; do not independently reinitialise I²C. Network URL, TLS and the existing API contract remain unchanged. This hardware revision updates the firmware design; the Waveshare port is not implemented or hardware-tested yet.
-
-## Revision C mechanical additions
-
-The revision C control electronics and mounts are retained. Add: 8 M3 heat inserts (approximately 4.6 mm OD×5 mm, confirm supplier), 4 M3×10 tray screws, 4 M3×8 display-retainer screws, 2 M3×10 USB-adapter screws, 2 M2.5 USB-extension screws, 6 M2.5×16 board screws/nuts, 6 nylon spacers (6 mm tall), soft PCB-edge gasket and strain relief. Allow £10–20 beyond revision B. See [assembly guide](ASSEMBLY.md) for exact mounting intent and fit checks.
-
-## Revision D rechargeable additions
-
-Use the **V4.0 Waveshare board** for this battery configuration. Read [battery integration and charger requirements](BATTERY.md) before purchasing or connecting the pack. The default V4 charge setting is approximately 2 A; the selected pack recommends no more than 1 A. This design requires a verified lower-current charger setting.
-
-| Qty | Item | GBP allowance | Selection / purpose |
-|---:|---|---:|---|
-| 1 | [Adafruit 354 protected 3.7 V 4400 mAh pack](https://www.adafruit.com/product/354) | £20–30 | Factory 1S parallel pack, 69×37×18 mm; 4.2 V charging, maximum recommended charge 1 A |
-| 1 | 220 kohm 1% SMD resistor, package matched to V4 R13 | £1–2 | Replaces 82 kohm charge-setting resistor; target ~0.8 A, verify by measurement; rework labour excluded |
-| 1 | 12 mm panel momentary NO pushbutton | £3–6 | Rear battery power key; generic CAD envelope, wire to verified board switch contacts |
-| 1 set | PH2.0 battery extension/adapter, detachable power-key lead, strain relief | £2–5 | Check battery polarity end-to-end; no assumption based on plug fit |
-| 1 set | 10 mm hook-and-loop strap, 1 mm insulating foam, 4 M3×12 screws/washers/nuts | £2–4 | Retain pack in removable printed cradle; check screw length |
-| 1 | Printed battery cradle | Filament above | Charcoal PLA; revise rear panel to accept four mount holes and power button |
-
-Additional purchasing allowance: approximately **£30–50** over revision C, excluding rework labour. No extra ESP controller, battery charger module or boost board is required by this architecture. A 4–6 hour runtime is a planning estimate, not a tested result. The exact charging/current/temperature and physical fit checks are listed in BATTERY.md.
+The [firmware](../firmware/README.md) now compiles for this TFT: green 480×320 telemetry, Wi-Fi API polling, HOLD/detail toggle, brightness PWM and translated low-battery warning. Encoder selection, globe and pass pages remain planned. This is a bench prototype, not a hardware-tested complete client.
