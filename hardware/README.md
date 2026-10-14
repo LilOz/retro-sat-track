@@ -1,38 +1,41 @@
-# ORBIT tabletop terminal - revision D rechargeable
+# ORBIT tabletop terminal — revision E
 
-A Macintosh-inspired 4-inch green-screen terminal with two knobs and two metal toggles, now with a rechargeable battery option. The case remains 135 mm wide x 175 mm high x 95 mm deep; bezel and controls project beyond that envelope.
+A Macintosh-inspired **3.5-inch landscape green-screen terminal**, with two knobs, two metal toggles and rechargeable power. The case is **135 mm wide ×175 mm high ×95 mm deep**; bezel and controls project beyond that envelope.
 
-- [Bill of materials](BOM.md)
-- [Assembly and control wiring](ASSEMBLY.md)
-- [Battery, charging, runtime and power firmware design](BATTERY.md)
-- [Complete Fusion assembly](cad/generated-revd/ORBIT-RevD.f3d)
-- [Internal inspection assembly](cad/generated-revd/ORBIT-RevD-inspection.f3d)
-- [STEP, eight printable STLs and validation reports](cad/generated-revd/)
+- [Bill of materials and PLA colours](BOM.md)
+- [Assembly, mounting dimensions and GPIO wiring](ASSEMBLY.md)
+- [Battery, charging and programming-power procedure](BATTERY.md)
+- [Editable complete Fusion assembly](cad/generated-reve/ORBIT-RevE.f3d)
+- [Internal inspection assembly](cad/generated-reve/ORBIT-RevE-inspection.f3d)
+- [STEP assembly, seven printable STLs and validation](cad/generated-reve/)
+- [ESP32 firmware and remaining UI work](../firmware/README.md)
 
-![Complete revision D enclosure](cad/generated-revd/ORBIT-RevD.png)
+![Complete Rev E enclosure](cad/generated-reve/ORBIT-RevE.png)
 
-## What changed
+## Design
 
-Revision D adds a protected 3.7 V / 4400 mAh battery reference, a removable charcoal cradle behind the screen, four cradle fixings on the rear cover, a rear momentary power key and a battery cable corridor. A soft strap and insulating pad retain the pack. The cradle mounts to the removable rear panel above the lower control-electronics tray. Its holder and revised rear cover are the only new/revised printed parts; the other six Rev C parts can be reused.
+Rev E replaces the square Waveshare display with **Adafruit 2050, 480×320 HX8357D**. A separate **ESP32-S3-DevKitC-1 N8R8** and **PowerBoost 1000C** sit on the removable lower tray. Direct GPIO reads the controls, eliminating the old seesaw, MCP23017 and ADS1115 boards. The protected Adafruit 354 battery sits in a soft-strapped cradle on the rear cover, above the tray. A rear latching button switches the booster through EN; USB charges the pack.
 
-The selected V4 Waveshare ESP32-S3-LCD-4 includes the controller, display and charging circuitry. **The proposed Adafruit 354 pack requires the charger current to be reduced from the V4 schematic's approximately 2 A setting to approximately 0.8 A and verified before charging.** See BATTERY.md for the hardware requirement, connector polarity checks and first build. It is not a firmware setting. Target endurance is 4-6 hours, based on an assumed power budget rather than measurement.
+The TFT mounts through its four PCB tabs onto front-panel bosses, using published 91.44×60.96 mm mounting centres. A charcoal landscape bezel surrounds its active area. The controller has a socketed 33×61 mm perfboard carrier with a central antenna cutout; the charger has two spacer fixings. A replaceable USB adapter allows adjustment to the extension you buy. Rear-panel removal gives access without disturbing the front controls.
 
-## CAD views and print parts
+The main F3D shows the **full shell, both sides and rear cover**. The separate inspection archive hides the shell/rear to expose the layout; those parts remain present and printable.
 
-The main F3D shows the full shell and rear cover. The inspection F3D deliberately hides those two components so the electronics can be viewed. They remain present and printable.
+![Internal layout with shell and rear hidden](cad/generated-reve/ORBIT-RevE-internals.png)
 
-Eight printed parts: ivory front, shell and revised rear; charcoal bezel, control tray, display retainer, USB adapter and battery cradle. Electronics, purchased knobs, power button, pack, foam, straps and cable-route shapes are reference geometry, not printable parts. Manufacturer outlines are used where available, but board thickness, component positions, connectors and mounting details remain simplified.
+Seven printed parts: ivory front, shell and rear; charcoal bezel, tray, USB adapter and battery cradle. Electronics, knobs, switch bodies, pack, spacers, foam and wiring corridors are purchased-part references, not printable parts. Display XY and charger PCB dimensions come from manufacturer CAD; glass-stack depth, DevKit outline, connectors and generic controls still need verification against purchased parts.
 
-Fusion reports 574 healthy timeline features and no interference between the new rigid battery/cradle/button envelopes and the existing simplified assembly. Flexible battery cable and soft retention references are excluded from that interference test. Mesh checks are recorded alongside the exports. These checks do not establish physical fit, electrical operation, charging safety, runtime or thermal performance.
+## Validation and printing
 
-The live Fusion document is **ORBIT Desktop Terminal - Rev D rechargeable battery**. Native local archives preserve the editable assembly. `AddBattery.py.txt` and `ExportBattery.py.txt` record the new modelling/export operations; they apply to a copy of the Rev C archive.
+The exported model has **560 healthy timeline features**, seven single-solid printable components and **no detected rigid-component interference** across 24 rigid components (39 overlapping-bound pairs analysed). Flexible wire and strap/pad references are excluded. All seven STLs have two faces per undirected mesh edge and fit within the P1S's 256 mm build envelope. Reports are included with the CAD. These checks do not establish physical fit, electrical operation, thermal performance or battery runtime.
 
-## Build and firmware
+Use Bambu PLA Matte **Ivory White** and **Charcoal** as separate parts; AMS is optional. Start with 0.4 mm nozzle, 0.2 mm layers, four walls and 15% gyroid. Orient/drop each part onto the bed and inspect supports, especially under shell tray ledges. Smooth the battery cradle and print an insert/display fit coupon before the full panels.
 
-Use the Bambu P1S with separate ivory and charcoal PLA parts. Start with a 0.4 mm nozzle, 0.2 mm layers, four walls and 15% gyroid; inspect supports in the slicer. All parts fit the bed individually. STL coordinates retain assembly positions: orient each part and drop it onto the bed. Print the battery cradle with its broad backplate on the bed and guards upwards. Smooth pack-facing edges and strap slots.
+The live Fusion document is **ORBIT Desktop Terminal - Rev E Adafruit 2050 rechargeable**; local F3D archives preserve the editable timeline. Rebuild/export source is included alongside them. The complete archive is the checked as-built design.
 
-The current firmware source remains the compiled **Rev A DevKitC/ILI9341 bench starter**. The Waveshare 480x480 display/control port and battery power service are specified but not implemented. The existing backend API and configurable LAN/HTTPS host remain applicable.
+## Electronics and firmware status
 
-Before final printing, confirm the V4 board, display support stack, USB extension flange, controls, power-key bushing and battery lead exits. Bench-test the charger modification, display, controls and battery/USB transitions. Physical fit and temperature checks remain outstanding.
+Allow approximately **£135–215 excluding filament/delivery**. PowerBoost's 1 A charger replaces the previous Waveshare resistor rework. Runtime target is **4–6 hours**, an estimate awaiting measurements. Follow the documented detachable power-link procedure before PC USB programming.
 
-Historical exports are retained in `cad/generated/` (Rev A), `cad/generated-revb/` and `cad/generated-revc/`. Their copied BOMs/assembly notes describe those older USB-powered revisions; use the current documents above for purchasing.
+The firmware now compiles for this hardware and provides green telemetry, API polling, HOLD/detail switches, physical backlight PWM and a translated low-battery warning. Encoder navigation, globe and pass pages remain planned. The API host stays configurable for LAN or HTTPS hosting. Physical assembly, hardware flashing and temperature/runtime tests remain outstanding.
+
+Historical Rev A–D exports and their copied notes are retained under `cad/generated/`, `generated-revb/`, `generated-revc/` and `generated-revd/`. `concept.svg` and `cad/OrbitTerminal.py` are the original Rev A concept/generator. Use the current Rev E documents for purchasing and wiring.

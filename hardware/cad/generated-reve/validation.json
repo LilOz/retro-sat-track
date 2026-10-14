@@ -1,0 +1,20 @@
+{
+  "document": "ORBIT Desktop Terminal - Rev E Adafruit 2050 rechargeable",
+  "timeline_features": 560,
+  "issues": [],
+  "printable_component_count": 7,
+  "rigid_interferences": [],
+  "rigid_component_count": 24,
+  "narrow_phase_pair_checks": 39,
+  "excluded_flexible_references": [
+    "W01",
+    "W02",
+    "W03",
+    "H03"
+  ],
+  "limitations": [
+    "Simplified purchased-part envelopes; display depth and DevKit/connector geometry provisional",
+    "No physical fit, electrical, thermal or runtime validation"
+  ],
+  "assembled_shell_visible": true
+}

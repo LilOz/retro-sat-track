@@ -1,73 +1,79 @@
-# ORBIT revision D — electronics integration and build
+# ORBIT revision E — electronics integration and build
 
-Revision D retains the Rev C controls and adds rechargeable power. See [battery integration](BATTERY.md) for the cradle, revised rear panel, required charger-current change and commissioning sequence.
+Rev E uses the Adafruit 2050 landscape TFT, an ESP32-S3-DevKitC-1 N8R8 and PowerBoost 1000C. The enclosed body stays **135×175×95 mm**, with bezel and controls projecting beyond it. [BOM](BOM.md) · [Battery/power wiring](BATTERY.md) · [Firmware](../firmware/README.md).
 
-## What the loose tray was for
+## What the tray is for
 
-The plate previously displayed to the left was an uninstalled control-electronics carrier, not an external accessory or keyboard. It is now a **110×70 mm removable internal tray**, below the display and 55 mm behind the front plane. It carries the MCP23017 switch interface, ADS1115 dial interface and a small detachable wiring terminal/perfboard. Four M3 screws fasten it to supports integrated into the shell. Remove the rear cover to unplug and remove it for servicing.
+The plate previously shown to the left is a **removable internal electronics tray**, not an external accessory. It is installed in the lower half of the shell. Its 110×70 mm plate carries a socketed ESP32 perfboard carrier and the charger on 6 mm nylon spacers. Four M3 screws secure it to integral shell ledges. It can be unplugged and removed through the rear for servicing.
 
-## What is now modelled in Fusion
+The screen attaches directly to four front-panel bosses through its PCB mounting tabs; the old square-screen retainer is removed. Knobs and toggle switches mount with their own panel nuts. The battery cradle attaches to the rear cover above the tray. Both enclosure sides remain solid; only the separate inspection archive hides the shell and rear cover.
 
-- Waveshare display/controller PCB behind the square screen, plus illustrative component, connector and antenna clearances.
-- Seesaw encoder PCB directly behind the SELECT encoder, with the encoder body; a pot body and both toggle bodies behind the panel.
-- MCP23017, ADS1115 and terminal board on 6 mm nylon spacers behind the removable tray.
-- Four tray ledges in the shell, M3 screw/insert envelopes and eight insert locations across tray/display supports.
-- A rear display retaining frame, PCB-edge seating/pressure pads and gasket clearance. Screws bear on the frame, never directly on the active glass.
-- Replaceable rear USB adapter plate with a generic 16×9 mm port cutout and 24 mm extension-flange screw pitch. Match this replaceable part to the extension you buy.
-- Blue I²C and orange USB cable route envelopes. They show reserved routes, not literal rectangular wires, connectors, final lengths or bend radii.
+## CAD dimensions and evidence
 
-The manufacturer-reported outlines are used for the Adafruit boards: seesaw 25.6×25.3, MCP23017 43×18, ADS1115 25.4×17.8 mm. Waveshare reports 76.54×74.66 mm for the non-touch module. PCB thickness, component shapes/locations, antenna location, control bodies, mounting centres and USB connector are **simplified engineering envelopes**, not imported manufacturer STEP models. Fit must be confirmed against the actual parts. The display reference does not imply a separate ESP32: its controller is built in.
+Coordinates are millimetres: X left/right, Y bottom/top, Z front/rear. Front is Z0–3, shell Z3–92, rear Z92–95.
 
-## Physical arrangement
+| Item | Position / dimensions | Evidence / remaining fit check |
+| --- | --- | --- |
+| TFT PCB including mounting tabs | X16.29–112.81, Y87.98–154.02, Z7.8–9.4; 96.52×66.04 mm landscape | XY from Adafruit Eagle board; simplified tab outline, nominal thickness |
+| TFT mounting centres | X18.83 /110.27, Y90.52 /151.48; 91.44×60.96 mm spacing | Published 3 mm holes; use M2.5 fixings |
+| Glass / active area | 84.7×54.34 /72.82×48.96 mm; active centre (67.5,121) | Eagle TFT package; 4 mm glass-stack depth provisional |
+| Front aperture | X30.7, Y96.1; 73.6×49.8 mm | Clears published active area; verify actual screen alignment |
+| Tray | X12.5–122.5, Y10–80, Z55–58 | Four shell supports and M3 insert pilots |
+| Carrier | X26–59, Y12–73, Z64–65.6; 33×61 mm | Drill holes at X29/56, Y16/57; socket row fit to actual DevKit |
+| ESP32 | Nominal 25.4×62.5 mm at X29.8, Y13, Z73 | Simplified envelope, verify purchased board, USB exits and antenna |
+| PowerBoost | 36.068×22.86 mm at X70, Y23, Z64 | Manufacturer PCB without optional USB-A; holes (72.54,25.54), (72.54,43.32) |
+| Battery cradle / pack | 85×51×24 /69×37×18 mm | See BATTERY.md for coordinates and retention |
+| USB adapter | 49×26×2 mm, 16×9 mm opening, 24 mm flange pitch | Generic replaceable plate; match extension before printing |
 
-Looking in from the rear: the large square assembly at the top is the Waveshare board and retaining frame. The tray occupies the lower half. The pot, encoder and toggles are forward of the tray; their shafts pass through the front panel and are fixed with their supplied nuts/washers. The seesaw board is soldered to the compatible encoder behind the front, so it is not a third board on the tray. The MCP/ADC boards face the removable rear cover for access to their connectors.
+The TFT product listing's 97×56 mm size omits the mounting-tab width; this model includes the tabs. Landscape mapping from the source board is X=59.47+EagleY, Y=121+EagleX. Sources: [Adafruit TFT PCB](https://github.com/adafruit/3.5inch-TFT-Breakout-PCB), [PowerBoost PCB](https://github.com/adafruit/Adafruit-PowerBoost-1000C). Dimensions were checked against the source boards on 2026-10-13. Electronics are reference envelopes, not detailed manufacturer STEP models.
 
-Shell depth runs from Z3 to Z92. Tray is Z55–58; spacer-mounted boards are near Z64–69, with terminals up to approximately Z74. The rear panel begins at Z92, leaving a cable/service zone. The screen is forward of the tray and is accessible through the retaining frame's rear window. Keep the antenna region free of metal and cable bundles; its true position comes from the purchased board drawing.
+The carrier has a central antenna cutout at X33–52/Y63–73, aligned above the tray opening at X25–59/Y63–77. Socket rails remain along the sides; confirm clearance against the actual module. Keep metal, wires and fasteners away from the actual antenna. Cable shapes reserve routes only; they do not specify connector placement, bend radii or lengths.
 
-## Electrical integration
+## Connections
 
 ```mermaid
 flowchart TD
-  USB[USB 5 V supply] --> EXT[Panel USB extension]
-  EXT --> WS[Waveshare screen + ESP32-S3]
-  BAT[Protected 1S 4400 mAh pack] <--> PWR[Onboard charger and battery conversion]
-  PWR <--> WS
-  KEY[Rear momentary power key] --> PWR
-  WS --> BUS[3.3 V I2C: power, ground, SDA, SCL]
-  BUS --> SS[Seesaw encoder interface 0x36]
-  SS --> ENC[Select encoder and push]
-  BUS --> MCP[MCP23017 0x20]
-  MCP --> SW[HOLD and GRID toggles]
-  BUS --> ADC[ADS1115 0x48]
-  ADC --> POT[B10K dial]
-  WS --> WIFI[Wi-Fi to configurable API host]
+  USB[Rear USB charge input] --> PB[PowerBoost 1000C]
+  BAT[Protected 1S 4400 mAh battery] <--> PB
+  OFF[Latching switch: EN to GND for OFF] --> PB
+  PB --> LINK[Removable system-power link]
+  LINK --> ESP[ESP32-S3 DevKitC 5V]
+  LINK --> TFT[Adafruit 2050 Vin]
+  ESP -->|3.3 V SPI and PWM| TFT
+  CONTROLS[Encoder, pot, HOLD and GRID] -->|Direct GPIO| ESP
+  PB -->|LBO through NPN translator| ESP
+  ESP -->|Wi-Fi HTTP or validated HTTPS| API[Configurable API host]
 ```
 
-The shared four-wire I²C harness is 3V3/GND/SDA/SCL. Set and measure the Waveshare terminal's I²C power selector at 3.3 V. Use the schematic/BSP for the purchased revision: V4 uses SDA15/SCL7; earlier revisions differ. Do not connect to the former DevKitC SPI pin table.
+| Signal | ESP32 GPIO / wiring |
+| --- | --- |
+| TFT CLK / MOSI / MISO | 12 /11 /13 |
+| TFT CS / D-C / RST | 10 /9 /14 |
+| TFT LITE | 15, 5 kHz backlight PWM |
+| TFT Vin / GND | System 5 V rail / common GND; leave 3Vo as output, not an ESP supply |
+| TFT IM2 | Close the rear IM2 solder jumper to 3.3 V to select SPI |
+| TFT CCS (SD chip select) | 10 kΩ to TFT 3Vo; SD unused, keep deselected |
+| TFT touch pins / other unused bus pins | Unconnected; no touchscreen driver in this build |
+| Encoder A / B / push | 4 /5 /6 reserved, common contacts to GND, pull-ups when implemented |
+| B10K pot | Wiper to 1 (ADC1), ends ESP 3V3/GND, 100 nF wiper-to-GND |
+| HOLD / GRID switches | 7 /8, close to GND; firmware enables pull-ups |
+| Low-battery warning | 2, from NPN collector only; circuit in BATTERY.md |
 
-Encoder: solder the compatible PEC11-pinout encoder to seesaw 4991, including its push contacts. MCP: GPA0 to HOLD, GPA1 to GRID, both pulled high; each switch closes to ground. ADC: A0 to pot wiper, ends to 3V3/GND, 100 nF wiper-to-ground. USB supplies the Waveshare board, which powers the low-current input interfaces. Use one USB supply and the protected pack on the dedicated battery header. The V4 charger must be configured and measured at the reduced charge current before connecting this pack for USB charging; see BATTERY.md. Do not use external DC input in this configuration.
-
-Route the short control harness along the side corridor with slack at the removable tray. Use detachable plugs and labels at both ends. Keep USB cable slack clear of screw bosses and the antenna. Begin at 100 kHz I²C; verify aggregate pull-ups and board helper operation. The terminal sends selections to its own UI and polls the existing API over Wi-Fi; it does not directly control the web browser.
+Use 3.3 V logic and common ground throughout. Avoid ESP32 boot straps (0/3/45/46), USB 19/20 and flash/PSRAM 26–37. Keep SPI wiring short, ground adjacent, and label detachable harnesses. Follow the [Adafruit SPI setup](https://learn.adafruit.com/adafruit-3-5-color-320x480-tft-touchscreen-breakout/spi-wiring-and-test) and [pinout](https://learn.adafruit.com/adafruit-3-5-color-320x480-tft-touchscreen-breakout/pinouts).
 
 ## Build sequence
 
-1. **Confirm components before printing final mounting parts.** Obtain the Waveshare board revision and drawing, compatible threaded panel encoder, pot, toggles and USB extension. Measure display/glass offset, PCB edges, connector exits and flange pitch. Adapt the retainer depth/pads and USB plate to these measurements. Cut the display/control fit coupon first.
-2. **Bench-test electronics.** Run the revision-matched Waveshare example, verify its 3.3 V control power, scan I²C, then read encoder/push, both switches and pot. The old ILI9341 starter is incompatible; the Waveshare firmware port is still required.
-3. **Print mechanical parts.** Ivory front, shell and rear; charcoal bezel, tray, retainer and USB adapter. 0.4 mm nozzle, 0.2 mm layers, four walls and 15% gyroid are starting settings. Inspect supports around tray ledges and the front's taller stand-offs. Drop each STL to the bed and orient it; exports retain assembly coordinates.
-4. **Install eight M3 heat-set inserts before electronics.** Four shell tray ledges and four front display stand-offs. Model uses 4.4 mm pilot diameter × 5 mm depth for approximately 4.6 mm OD × 5 mm inserts. Print and calibrate an insert coupon to the exact insert supplier before using heat near the finished case. Use M3×10 tray screws and M3×8 retainer screws as starting lengths; verify they do not bottom out.
-5. **Assemble the front.** Register/glue the bezel after fit approval. Mount controls with washers/nuts and fit purchased knobs. Seat the display on its PCB-edge supports with a soft gasket, fit the rear retainer and tighten evenly without loading the glass. The current pad/gasket depth assumes the provisional PCB stack; change it to the measured board before printing.
-6. **Build the tray outside the enclosure.** Use M2.5×16 screws, nuts/washers and 6 mm nylon spacers for MCP, ADC and perfboard. Slotted mount rows permit adjustment; confirm actual fixing holes and drill/adapt where required. Keep solder joints and metal fasteners clear of the tray and neighbouring traces.
-7. **Fit front and tray.** Attach front to shell using its four M3 face screws/nuts. Install tray onto the four shell supports, plug in labelled controls and I²C, and leave enough slack to remove it from the rear.
-8. **Fit USB and test while open.** Bolt the USB extension to its adapter with two M2.5 fixings and the adapter to the rear with two M3 fixings. Plug into the Waveshare USB port; ensure the lead is strain-relieved. Verify inputs, Wi-Fi, display and supply stability before fitting the rear.
-9. **Add rechargeable power.** Follow BATTERY.md to modify and verify the charger, fit the rear cradle and momentary button, and bench-test battery/USB transitions. Leave detachable service slack: the battery moves with the rear panel.
-10. **Close and finish.** Secure the rear panel with four M3 screws/nuts, add rubber feet, and inspect cable clearance. Removing four rear screws gives service access without taking off knobs or switches.
-
-## BOM additions and revised budget
-
-Keep the revision B electronics. Add eight short M3 heat-set inserts, four M3×10 tray screws, four M3×8 retainer screws, two M3×10 USB-plate screws, two M2.5 USB-flange screws, six M2.5×16 board screws/nuts, six 6 mm nylon spacers and a small soft gasket/strain-relief set. Quantities and lengths are prototype selections; confirm the actual board holes and screw engagement. Allow approximately **£135–225 excluding filament/delivery and paid board rework** for the complete parts list. The battery additions are itemised in the current BOM. Purchased knobs and electronics are not printable STLs.
+1. **Measure purchased parts.** Confirm TFT hole centres, glass-to-PCB stack, header protrusion, DevKit socket spacing, controls, charger connectors and USB extension. Print a small display/insert fit coupon before the full front. The 4.8 mm display bosses must support the PCB without pressing glass onto the front panel.
+2. **Bench-test display and controls.** Set IM2, wire SPI and PWM, compile/upload the firmware and verify green telemetry, brightness, HOLD and detail toggle. Initially power through the DevKit USB with the boost output link disconnected. Encoder selection is not yet implemented.
+3. **Print seven parts.** Ivory front/shell/rear; charcoal bezel/tray/USB adapter/battery cradle. P1S starting settings: 0.4 mm nozzle, 0.2 mm layers, four walls, 15% gyroid. Orient each STL and drop to bed; exports retain assembly coordinates. Inspect supports under tray ledges. Print cradle backplate on bed, guards up; smooth all pack-facing edges.
+4. **Fit inserts before electronics.** Four M3 inserts in shell tray supports and four M2.5 in front display bosses. Calibrate the 4.4/3.3 mm pilot diameters to the actual inserts. Do not heat inserts with the battery or screen fitted.
+5. **Assemble front panel.** Fit bezel pegs and bond after checking alignment. Install controls with nuts/washers and purchased knobs. Seat the TFT PCB on its four bosses and secure with M2.5×5 screws and thin nylon washers. Check screw depth and tighten gently; no screw or clamping load on glass.
+6. **Build tray.** Trim/drill perfboard, cut the antenna clearance, then solder socket headers and the low-battery translator. Verify header pin numbering and cut unwanted copper connections on stripboard. Mount carrier and PowerBoost with six 6 mm spacers and M2.5×16 fixings. Omit PowerBoost's optional USB-A connector; solder a detachable output lead. Socket the ESP32 with its antenna beyond the carrier.
+7. **Install front and tray.** Fit front to shell with four M3 through-boss fixings; secure tray with four M3×10 screws. Connect SPI/controls and power with service slack. Keep harnesses clear of the antenna, mounting holes and the rear battery cradle.
+8. **Assemble rear.** Fit USB extension and its replaceable adapter, latching power button, battery cradle and soft strap/pad. Wire charger, switch and battery as in BATTERY.md. The battery and switch move with the cover: provide detachable leads and strain relief.
+9. **Commission while open.** Check polarity, rails, translated LBO levels, charge current, operation from USB/battery and off-state charging. Measure temperatures and low-charge battery current. For PC programming, disconnect the boost output link first; do not parallel PC USB with PowerBoost output.
+10. **Close and test fit.** Verify wire clearance, screw lengths and pack retention; fit rear screws and feet. Repeat thermal checks with the enclosure closed before unattended operation. Opening four rear screws gives service access without removing the front controls.
 
 ## Validation limits
 
-Fusion feature health and STL manifold/dimension checks are geometric checks. They do not validate physical fit, wire lengths, board-mount hole accuracy, connector pin order, electrical safety or an operating firmware build. Reference electronics and route envelopes intentionally simplify details. Rev D adds battery/cradle/power-button interference checks against the simplified assembly. An assembled F3D and an inspection F3D with shell/rear hidden are included. Unhide `02 Ivory shell` and `03 Ivory rear cover` in Fusion to see the exterior again.
-
-Sources: [Waveshare module](https://www.waveshare.com/product/mcu-tools/esp32-s3-touch-lcd-4.htm), [board revision reference](https://github.com/waveshareteam/ESP32-S3-Touch-LCD-4/blob/main/hardware/HARDWARE_REFERENCE.md), [seesaw dimensions](https://www.adafruit.com/product/4991), [MCP dimensions](https://www.adafruit.com/product/5346), [ADC dimensions](https://www.adafruit.com/product/1085).
+Fusion feature health, rigid-envelope interference and STL edge/manifold checks are recorded with the exports. They establish geometric consistency of this model, not purchased-part fit, electrical operation, cooling or battery runtime. Flexible cable/strap references are excluded from rigid interference checks. The assembled archive retains the full enclosure; the inspection archive hides only `02 Ivory shell` and `03 Ivory rear cover`.

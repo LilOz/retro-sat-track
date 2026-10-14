@@ -1,0 +1,79 @@
+[
+  {
+    "file": "01-Ivory-front-panel.stl",
+    "triangles": 3296,
+    "nonmanifold_edges": 0,
+    "size_mm": [
+      135.0,
+      175.0,
+      7.8
+    ],
+    "volume_mm3": 59704.03
+  },
+  {
+    "file": "02-Ivory-shell.stl",
+    "triangles": 3840,
+    "nonmanifold_edges": 0,
+    "size_mm": [
+      135.0,
+      175.0,
+      89.0
+    ],
+    "volume_mm3": 137244.19
+  },
+  {
+    "file": "03-Ivory-rear-cover.stl",
+    "triangles": 3836,
+    "nonmanifold_edges": 0,
+    "size_mm": [
+      135.0,
+      175.0,
+      5.0
+    ],
+    "volume_mm3": 67510.18
+  },
+  {
+    "file": "04-Charcoal-landscape-bezel.stl",
+    "triangles": 736,
+    "nonmanifold_edges": 0,
+    "size_mm": [
+      81.6,
+      57.8,
+      4.0
+    ],
+    "volume_mm3": 2096.86
+  },
+  {
+    "file": "05-Controller-and-charger-tray.stl",
+    "triangles": 1800,
+    "nonmanifold_edges": 0,
+    "size_mm": [
+      110.0,
+      70.0,
+      3.0
+    ],
+    "volume_mm3": 21432.34
+  },
+  {
+    "file": "07-Replaceable-USB-charge-adapter---generic-24mm-pitch.stl",
+    "triangles": 624,
+    "nonmanifold_edges": 0,
+    "size_mm": [
+      49.0,
+      26.0,
+      2.0
+    ],
+    "volume_mm3": 2199.36
+  },
+  {
+    "file": "08-Removable-battery-cradle.stl",
+    "triangles": 708,
+    "nonmanifold_edges": 0,
+    "size_mm": [
+      85.0,
+      51.0,
+      24.0
+    ],
+    "volume_mm3": 21785.73
+  }
+]

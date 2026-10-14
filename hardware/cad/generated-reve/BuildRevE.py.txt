@@ -1,0 +1,209 @@
+import adsk.core
+import adsk.fusion
+import math
+import os
+import json
+
+OUT = os.path.join(os.path.expanduser('~'), 'orbit-cad-reve')
+
+def run(_context: str):
+    app = adsk.core.Application.get()
+    doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
+    doc.name = 'ORBIT Desktop Terminal - Rev E Adafruit 2050 rechargeable'
+    design = adsk.fusion.Design.cast(app.activeProduct)
+    design.designType = adsk.fusion.DesignTypes.ParametricDesignType
+    design.unitsManager.distanceDisplayUnits = adsk.fusion.DistanceUnits.MillimeterDistanceUnits
+    root = design.rootComponent
+
+    V = adsk.core.ValueInput.createByReal
+    P = lambda x,y: adsk.core.Point3D.create(x/10,y/10,0)
+    NEW = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
+    CUT = adsk.fusion.FeatureOperations.CutFeatureOperation
+    JOIN = adsk.fusion.FeatureOperations.JoinFeatureOperation
+    printable = []
+    reference = []
+
+    def comp(name, print_part=True):
+        c = root.occurrences.addNewComponent(adsk.core.Matrix3D.create()).component
+        c.name = name
+        (printable if print_part else reference).append(c)
+        return c
+
+    def sketch(c,z,name):
+        pi=c.constructionPlanes.createInput()
+        pi.setByOffset(c.xYConstructionPlane,V(z/10))
+        pl=c.constructionPlanes.add(pi)
+        pl.isLightBulbOn=False
+        s=c.sketches.add(pl)
+        s.name=name
+        return s
+
+    def extrude(c,s,depth,op,name):
+        if s.profiles.count != 1:
+            raise RuntimeError(name + ': expected one closed profile, got ' + str(s.profiles.count))
+        i=c.features.extrudeFeatures.createInput(s.profiles.item(0),op)
+        if op == CUT:i.participantBodies=list(c.bRepBodies)
+        extent=adsk.fusion.DistanceExtentDefinition.create(V(abs(depth)/10))
+        direction=adsk.fusion.ExtentDirections.PositiveExtentDirection if depth>0 else adsk.fusion.ExtentDirections.NegativeExtentDirection
+        i.setOneSideExtent(extent,direction)
+        f=c.features.extrudeFeatures.add(i)
+        f.name=name
+        s.isLightBulbOn=False
+        return f
+
+    def box(c,x,y,z,w,h,d,name,op=NEW):
+        s=sketch(c,z,name)
+        s.sketchCurves.sketchLines.addTwoPointRectangle(P(x,y),P(x+w,y+h))
+        return extrude(c,s,d,op,name)
+
+    def rounded(c,x,y,z,w,h,r,d,name,op=NEW):
+        s=sketch(c,z,name)
+        lines=s.sketchCurves.sketchLines
+        arcs=s.sketchCurves.sketchArcs
+        lines.addByTwoPoints(P(x+r,y),P(x+w-r,y))
+        arcs.addByCenterStartSweep(P(x+w-r,y+r),P(x+w-r,y),math.pi/2)
+        lines.addByTwoPoints(P(x+w,y+r),P(x+w,y+h-r))
+        arcs.addByCenterStartSweep(P(x+w-r,y+h-r),P(x+w,y+h-r),math.pi/2)
+        lines.addByTwoPoints(P(x+w-r,y+h),P(x+r,y+h))
+        arcs.addByCenterStartSweep(P(x+r,y+h-r),P(x+r,y+h),math.pi/2)
+        lines.addByTwoPoints(P(x,y+h-r),P(x,y+r))
+        arcs.addByCenterStartSweep(P(x+r,y+r),P(x,y+r),math.pi/2)
+        return extrude(c,s,d,op,name)
+
+    def circle(c,x,y,z,r,d,name,op=NEW):
+        s=sketch(c,z,name)
+        s.sketchCurves.sketchCircles.addByCenterRadius(P(x,y),r/10)
+        return extrude(c,s,d,op,name)
+
+    front=comp('01 Ivory front panel')
+    rounded(front,0,0,0,135,175,6,3,'Front panel')
+    rounded(front,30.7,96.1,0,73.6,49.8,0.2,3,'Adafruit 2050 landscape aperture',CUT)
+    for x,y,r,label in [(36,36,3.7,'Encoder'),(99,36,3.7,'Pot'),(18,70,3.2,'HOLD'),(117,70,3.2,'GRID')]:circle(front,x,y,0,r,3,label,CUT)
+    rounded(front,50.5,16,0,34,2.4,1,0.8,'Decorative disk slot',CUT)
+    corners=[(5,5),(130,5),(5,170),(130,170)]
+    for x,y in corners:circle(front,x,y,0,1.7,3,'M3 panel screw',CUT)
+    shell=comp('02 Ivory shell')
+    rounded(shell,0,0,3,135,175,6,89,'Shell exterior')
+    rounded(shell,2.4,2.4,3,130.2,170.2,3.6,89,'Open cavity',CUT)
+    for x,y in corners:
+        for z in [3,84]:
+            circle(shell,x,y,z,4,8,'M3 corner boss',JOIN);circle(shell,x,y,z,1.7,8,'M3 boss bore',CUT)
+    rear=comp('03 Ivory rear cover')
+    rounded(rear,0,0,92,135,175,6,3,'Rear cover')
+    for x,y in corners:circle(rear,x,y,92,1.7,3,'Rear screw',CUT)
+    rounded(rear,50.5,12,92,34,18,2,3,'Charge USB service opening',CUT)
+    for x in range(35,106,10):rounded(rear,x,145,92,3,15,1,3,'Rear vent',CUT)
+    circle(rear,117,112,92,6.1,3,'12mm latching power switch clearance',CUT)
+    bezel=comp('04 Charcoal landscape bezel')
+    rounded(bezel,26.7,92.1,-2,81.6,57.8,3,2,'Landscape display bezel')
+    rounded(bezel,30.7,96.1,-2,73.6,49.8,0.2,2,'Visible aperture',CUT)
+    for x,y in [(28.7,94.1),(106.3,147.9)]:
+        circle(bezel,x,y,0,0.9,2,'Bezel peg',JOIN);circle(front,x,y,0,1.1,2.2,'Bezel socket',CUT)
+    # Actual 2050 mounting centres: 91.44 x 60.96 mm; M2.5 fasteners in 3mm PCB holes.
+    mounts=[(x,y) for x in [18.83,110.27] for y in [90.52,151.48]]
+    for x,y in mounts:
+        circle(front,x,y,3,3.4,4.8,'Display PCB mounting boss - verify stack',JOIN)
+        circle(front,x,y,3.8,1.65,4,'M2.5 insert pilot - calibrate',CUT)
+    tray=comp('05 Controller and charger tray')
+    rounded(tray,12.5,10,55,110,70,3,3,'Removable electronics tray')
+    for x in [17.5,117.5]:
+        for y in [20,70]:
+            circle(tray,x,y,55,1.7,3,'M3 tray screw',CUT)
+            box(shell,1 if x<60 else 111,y-6,48,23,12,7,'Tray ledge',JOIN)
+            circle(shell,x,y,50,2.2,5,'M3 insert pilot',CUT)
+    rounded(tray,25,63,55,34,14,1,3,'ESP32 antenna keepout',CUT)
+    controller_holes=[(x,y) for x in [29,56] for y in [16,57]]
+    charger_holes=[(72.54,25.54),(72.54,43.32)]
+    for x,y in controller_holes+charger_holes:circle(tray,x,y,55,1.4,3,'M2.5 board fixing',CUT)
+    adapter=comp('07 Replaceable USB charge adapter - generic 24mm pitch')
+    box(adapter,43,8,95,49,26,2,'Replaceable USB adapter')
+    box(adapter,59.5,16.5,95,16,9,2,'USB cutout - match purchased extension',CUT)
+    for x in [47.5,87.5]:
+        circle(adapter,x,21,95,1.7,2,'Adapter M3 fixing',CUT);circle(rear,x,21,92,1.7,3,'Adapter M3 fixing',CUT)
+    for x in [55.5,79.5]:circle(adapter,x,21,95,1.4,2,'USB flange fixing',CUT)
+    cradle=comp('08 Removable battery cradle')
+    box(cradle,16,91,88,85,51,2,'Battery backplate')
+    for x in [16,98]:box(cradle,x,99,66,3,34,22,'Pack end guard',JOIN)
+    for y in [91,139]:box(cradle,26,y,66,67,3,22,'Pack edge guard',JOIN)
+    for y in [95,136]:box(cradle,52,y,88,12,3,2,'Soft strap slot',CUT)
+    for x in [19,98]:
+        for y in [94,139]:
+            circle(cradle,x,y,88,1.7,2,'Cradle M3 through hole',CUT)
+            circle(rear,x,y,90,3.5,2,'Cradle spacer',JOIN);circle(rear,x,y,90,1.7,5,'Cradle rear fixing',CUT)
+    # Purchased display: landscape transform X=59.47+EagleY, Y=121+EagleX.
+    board=comp('E01 Adafruit 2050 PCB - published tabs and holes',False)
+    box(board,16.29,93.06,7.8,96.52,55.88,1.6,'PCB central outline - nominal thickness')
+    for x in [16.29,107.73]:box(board,x,87.98,7.8,5.08,66.04,1.6,'Mounting tabs bounding outline',JOIN)
+    for x,y in mounts:circle(board,x,y,7.8,1.5,1.6,'Published 3mm mounting hole',CUT)
+    # Library footprint specifies active area 72.82 x 48.96 and glass 84.7 x 54.34.
+    glass=comp('E02 TFT glass and green active area',False)
+    box(glass,22.17,93.83,3.8,84.7,54.34,4,'Glass envelope - verify depth')
+    screen=comp('REF Green TFT active area 480x320',False)
+    box(screen,31.09,96.52,3.7,72.82,48.96,0.1,'Published active area')
+    headers=comp('E03 TFT rear headers and component keepout',False)
+    for x in [18.83,109.762]:box(headers,x-1.25,95.6,9.4,2.5,50.8,8,'Header clearance')
+    box(headers,41,103,9.4,50,33,5,'Display component envelope')
+    controls=[]
+    for x,name in [(36,'Select'),(99,'Intensity')]:
+        c=comp('REF '+name+' knob',False);circle(c,x,36,-16,11,13,'Purchased knob');controls.append(c)
+    for x,label in [(18,'HOLD'),(117,'GRID')]:
+        c=comp('REF '+label+' toggle',False);circle(c,x,70,-2,4,2,'Toggle washer');circle(c,x,70,-15,1.5,13,'Toggle lever');box(c,x-5,64,3,10,12,17,'Switch body');controls.append(c)
+    encoder=comp('E04 Direct GPIO encoder body',False);box(encoder,29.5,29.5,3,13,13,17,'Encoder envelope')
+    pot=comp('E05 B10K dial body',False);circle(pot,99,36,3,8.5,17,'Pot envelope')
+    carrier=comp('E06 Drilled 33x49mm perfboard socket carrier',False)
+    box(carrier,26,12,64,33,49,1.6,'Purchased perfboard trimmed below antenna')
+    for x,y in controller_holes:circle(carrier,x,y,64,1.4,1.6,'Drill carrier mount',CUT)
+    for x in [30,52.86]:box(carrier,x,20,65.6,2.5,40.64,7.4,'Female header socket envelope')
+    esp=comp('E07 ESP32-S3 DevKitC-1 N8R8 - fit envelope',False)
+    box(esp,29.8,13,73,25.4,62.5,1.6,'DevKitC nominal envelope - verify board')
+    box(esp,33,43,74.6,18,20,3.4,'ESP module component envelope')
+    box(esp,33,13,74.6,17,7,4,'USB sockets clearance')
+    boost=comp('E08 PowerBoost 1000C - published PCB dimensions',False)
+    box(boost,70,23,64,36.068,22.86,1.6,'PowerBoost PCB without USB-A')
+    for x,y in charger_holes:circle(boost,x,y,64,1.25,1.6,'Published charger fixing',CUT)
+    box(boost,76,34,65.6,11,10,7,'JST battery socket envelope')
+    box(boost,84,29,65.6,18,13,5,'Inductor and components envelope')
+    box(boost,70,30,65.6,7,8,3,'Micro USB charging connector envelope')
+    spacers=comp('H01 Nylon 6mm board spacers',False)
+    for x,y in controller_holes+charger_holes:
+        circle(spacers,x,y,58,2.3,6,'M2.5 spacer');circle(spacers,x,y,58,1.4,6,'Spacer bore',CUT)
+    pack=comp('E10 Protected 1S 4400mAh battery - Adafruit 354 envelope',False)
+    box(pack,24,98.5,69,69,37,18,'Battery envelope')
+    button=comp('E11 Rear latching SPST power switch - 12mm',False)
+    circle(button,117,112,80,7,12,'Power switch body');circle(button,117,112,92,6,3,'Bushing');circle(button,117,112,95,7,3,'Switch cap')
+    usbport=comp('E12 Panel charge USB extension - generic',False);box(usbport,52,13.5,83,31,15,9,'Panel extension')
+    spi=comp('W01 SPI and direct control harness corridors',False)
+    box(spi,22,40,33,3,85,3,'Display SPI side corridor');box(spi,22,121,17.4,3,3,15.6,'Display header service loop')
+    box(spi,25,40,33,10,3,40,'Controller harness corridor')
+    usb=comp('W02 Charging USB cable corridor',False)
+    box(usb,61,21,74,4,13,9,'Rear charge USB service loop');box(usb,61,30,68,9,4,6,'Charger USB approach')
+    lead=comp('W03 Battery lead corridor - verify actual exit',False)
+    box(lead,88,46,75,3,52.5,3,'Battery lead to charger')
+    foam=comp('H03 Soft battery pad and strap',False)
+    box(foam,26,100,87,65,34,1,'Insulating pad');box(foam,53,98,67.5,10,38,1,'Strap front')
+    for y in [97,136]:box(foam,53,y,68,10,1,23,'Strap wrap')
+    box(foam,53,97,90,10,40,1,'Strap rear')
+    lib=app.materialLibraries.itemByName('Fusion Appearance Library');base=lib.appearances.itemByName('Plastic - Matte (White)') if lib else None
+    if base:
+        palette=[('Ivory PLA',(232,222,198,255),[front,shell,rear]),('Charcoal PLA',(40,43,40,255),[bezel,tray,adapter,cradle]+controls+[button]),('Green phosphor',(30,180,65,255),[screen]),('PCB green',(20,100,62,255),[board,carrier,esp,boost]),('Display glass',(20,25,20,255),[glass,headers]),('Battery blue',(35,85,175,255),[pack]),('Nylon',(215,210,185,255),[spacers]),('Signal blue',(45,115,230,255),[spi]),('USB orange',(220,115,35,255),[usb,usbport]),('Battery red',(190,45,40,255),[lead]),('Soft retention',(95,95,90,255),[foam])]
+        for name,color,components in palette:
+            a=design.appearances.addByCopy(base,name);prop=adsk.core.ColorProperty.cast(a.appearanceProperties.itemById('opaque_albedo'))
+            if prop:prop.value=adsk.core.Color.create(*color)
+            for c in components:
+                for b in c.bRepBodies:b.appearance=a
+    bodies=list(boost.bRepBodies)
+    tools=adsk.core.ObjectCollection.create()
+    for b in bodies[1:]:tools.add(b)
+    ci=boost.features.combineFeatures.createInput(bodies[0],tools)
+    ci.operation=adsk.fusion.FeatureOperations.JoinFeatureOperation
+    feature=boost.features.combineFeatures.add(ci)
+    feature.name='Unify overlapping charger component keepouts'
+    carrier.name='E06 Drilled 33x61mm perfboard socket carrier'
+    box(carrier,26,61,64,33,12,1.6,'Extend carrier for full 22-way sockets',JOIN)
+    box(carrier,33,63,64,19,10,1.6,'Carrier antenna clearance',CUT)
+    for x in [30,52.86]:box(carrier,x,16,65.6,2.5,55.88,7.4,'Full 22-way socket envelope',JOIN)
+    issues=[design.timeline.item(i).errorOrWarningMessage for i in range(design.timeline.count) if design.timeline.item(i).healthState!=adsk.fusion.FeatureHealthStates.HealthyFeatureHealthState]
+    assert not issues,str(issues)
+    for c in printable:assert c.bRepBodies.count==1 and c.bRepBodies.item(0).isSolid,c.name
+    os.makedirs(OUT,exist_ok=True)
+    print(json.dumps({'document':doc.name,'features':design.timeline.count,'issues':issues,'printable_parts':len(printable),'display_holes_mm':mounts}))

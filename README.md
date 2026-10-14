@@ -74,7 +74,7 @@ retro-sat-track/
 └── .github/workflows/ci.yml
 ```
 
-Runtime files live in ignored `.data/`; override with `SAT_TRACK_DATA_DIR`. This MVP runs on your PC. The next hardware phase is drafted in [hardware/README.md](hardware/README.md): bill of materials, Fusion CAD generator and [ESP32 firmware design](firmware/README.md). Revision D adds a rechargeable battery cradle and power design in Fusion; physical fit, charger-current modification/validation and the Waveshare firmware port remain pending.
+Runtime files live in ignored `.data/`; override with `SAT_TRACK_DATA_DIR`. This MVP runs on your PC. The next hardware phase is drafted in [hardware/README.md](hardware/README.md): bill of materials, Fusion CAD generator and [ESP32 firmware design](firmware/README.md). Revision E provides editable Fusion CAD for the Adafruit 2050 3.5-inch landscape display, a separate ESP32-S3 and rechargeable PowerBoost supply. Its telemetry/backlight/low-battery firmware compiles; physical fit and electrical testing, encoder navigation, globe and pass pages remain pending.
 
 ## API for a future ESP client
 
