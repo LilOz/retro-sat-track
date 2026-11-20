@@ -1,0 +1,10 @@
+{
+  "rigid_component_count": 17,
+  "narrow_phase_pair_checks": 26,
+  "collisions": [],
+  "excluded_flexible_references": [
+    "W01",
+    "W02",
+    "H01"
+  ]
+}

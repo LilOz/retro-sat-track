@@ -1,0 +1,174 @@
+import adsk.core
+import adsk.fusion
+import math
+import os
+import json
+
+OUT = os.path.join(os.path.expanduser('~'), 'orbit-cad-revf')
+
+def run(_context: str):
+    app = adsk.core.Application.get()
+    doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
+    doc.name = 'ORBIT Desktop Terminal - Rev F budget MSP3525 USB'
+    design = adsk.fusion.Design.cast(app.activeProduct)
+    design.designType = adsk.fusion.DesignTypes.ParametricDesignType
+    design.unitsManager.distanceDisplayUnits = adsk.fusion.DistanceUnits.MillimeterDistanceUnits
+    root = design.rootComponent
+
+    V = adsk.core.ValueInput.createByReal
+    P = lambda x,y: adsk.core.Point3D.create(x/10,y/10,0)
+    NEW = adsk.fusion.FeatureOperations.NewBodyFeatureOperation
+    CUT = adsk.fusion.FeatureOperations.CutFeatureOperation
+    JOIN = adsk.fusion.FeatureOperations.JoinFeatureOperation
+    printable = []
+    reference = []
+
+    def comp(name, print_part=True):
+        c = root.occurrences.addNewComponent(adsk.core.Matrix3D.create()).component
+        c.name = name
+        (printable if print_part else reference).append(c)
+        return c
+
+    def sketch(c,z,name):
+        pi=c.constructionPlanes.createInput()
+        pi.setByOffset(c.xYConstructionPlane,V(z/10))
+        pl=c.constructionPlanes.add(pi)
+        pl.isLightBulbOn=False
+        s=c.sketches.add(pl)
+        s.name=name
+        return s
+
+    def extrude(c,s,depth,op,name):
+        if s.profiles.count != 1:
+            raise RuntimeError(name + ': expected one closed profile, got ' + str(s.profiles.count))
+        i=c.features.extrudeFeatures.createInput(s.profiles.item(0),op)
+        if op == CUT:i.participantBodies=list(c.bRepBodies)
+        extent=adsk.fusion.DistanceExtentDefinition.create(V(abs(depth)/10))
+        direction=adsk.fusion.ExtentDirections.PositiveExtentDirection if depth>0 else adsk.fusion.ExtentDirections.NegativeExtentDirection
+        i.setOneSideExtent(extent,direction)
+        f=c.features.extrudeFeatures.add(i)
+        f.name=name
+        s.isLightBulbOn=False
+        return f
+
+    def box(c,x,y,z,w,h,d,name,op=NEW):
+        s=sketch(c,z,name)
+        s.sketchCurves.sketchLines.addTwoPointRectangle(P(x,y),P(x+w,y+h))
+        return extrude(c,s,d,op,name)
+
+    def rounded(c,x,y,z,w,h,r,d,name,op=NEW):
+        s=sketch(c,z,name)
+        lines=s.sketchCurves.sketchLines
+        arcs=s.sketchCurves.sketchArcs
+        lines.addByTwoPoints(P(x+r,y),P(x+w-r,y))
+        arcs.addByCenterStartSweep(P(x+w-r,y+r),P(x+w-r,y),math.pi/2)
+        lines.addByTwoPoints(P(x+w,y+r),P(x+w,y+h-r))
+        arcs.addByCenterStartSweep(P(x+w-r,y+h-r),P(x+w,y+h-r),math.pi/2)
+        lines.addByTwoPoints(P(x+w-r,y+h),P(x+r,y+h))
+        arcs.addByCenterStartSweep(P(x+r,y+h-r),P(x+r,y+h),math.pi/2)
+        lines.addByTwoPoints(P(x,y+h-r),P(x,y+r))
+        arcs.addByCenterStartSweep(P(x+r,y+r),P(x,y+r),math.pi/2)
+        return extrude(c,s,d,op,name)
+
+    def circle(c,x,y,z,r,d,name,op=NEW):
+        s=sketch(c,z,name)
+        s.sketchCurves.sketchCircles.addByCenterRadius(P(x,y),r/10)
+        return extrude(c,s,d,op,name)
+
+    # MSP3525 family XY drawing. Confirm supplied no-touch board before final printing.
+    # Active-area offsets 11.24 / 3.27 mm; same external case as Rev E.
+    px,py=19.54,93.25
+    mounts=[(px+x,py+y) for x in [3,95] for y in [3,52.5]]
+    corners=[(5,5),(130,5),(5,170),(130,170)]
+    front=comp('01 Ivory front panel')
+    rounded(front,0,0,0,135,175,6,3,'Front panel')
+    rounded(front,30.4,96.1,0,74.2,49.8,0.2,3,'480x320 landscape aperture',CUT)
+    for x,y,r,label in [(36,36,3.7,'Select push encoder'),(99,36,3.7,'Intensity pot'),(18,70,3.2,'HOLD'),(117,70,3.2,'GRID')]:circle(front,x,y,0,r,3,label,CUT)
+    rounded(front,50.5,16,0,34,2.4,1,0.8,'Decorative disk slot',CUT)
+    for x,y in corners:circle(front,x,y,0,1.7,3,'M3 panel fixing',CUT)
+    shell=comp('02 Ivory shell')
+    rounded(shell,0,0,3,135,175,6,89,'Shell exterior')
+    rounded(shell,2.4,2.4,3,130.2,170.2,3.6,89,'Open cavity',CUT)
+    for x,y in corners:
+        for z in [3,84]:
+            circle(shell,x,y,z,4,8,'M3 corner boss',JOIN);circle(shell,x,y,z,1.7,8,'M3 through bore',CUT)
+    rear=comp('03 Ivory USB rear cover')
+    rounded(rear,0,0,92,135,175,6,3,'Rear cover')
+    for x,y in corners:circle(rear,x,y,92,1.7,3,'Rear screw',CUT)
+    rounded(rear,15,24,92,16,10,2,3,'USB-C plug pass-through - deburr edges',CUT)
+    for x in range(35,106,10):rounded(rear,x,145,92,3,15,1,3,'Rear vent',CUT)
+    # Two tie slots beside the pass-through anchor the cable jacket inside the cover.
+    for y in [20,36]:rounded(rear,20,y,92,6,2,0.5,3,'Rear cable tie anchor',CUT)
+    bezel=comp('04 Charcoal landscape bezel')
+    rounded(bezel,26.4,92.1,-2,82.2,57.8,3,2,'Landscape bezel')
+    rounded(bezel,30.4,96.1,-2,74.2,49.8,0.2,2,'Aperture',CUT)
+    for x,y in [(28.4,94.1),(106.6,147.9)]:
+        circle(front,x,y,0,1.1,2.2,'Bezel socket',CUT);circle(bezel,x,y,0,0.9,2,'Bezel peg',JOIN)
+    adapter_mounts=[(x,y) for x in [18,120] for y in [89,153]]
+    for x,y in adapter_mounts:
+        circle(front,x,y,3,3.5,4,'Carrier support',JOIN);circle(front,x,y,2,2.2,5,'M3 insert pilot',CUT)
+    carrier=comp('05 Replaceable MSP3525 display carrier')
+    rounded(carrier,14,85,7,110,72,2,2,'Replaceable display carrier')
+    box(carrier,25.7,92.8,7,85.7,56.4,2,'Glass and flex clearance',CUT)
+    for x,y in adapter_mounts:rounded(carrier,x-3,y-1.7,7,6,3.4,1.6,2,'Carrier lateral adjustment slot',CUT)
+    for x,y in mounts:
+        circle(carrier,x,y,9,3.3,3,'PCB mounting boss - measure stack',JOIN)
+        circle(carrier,x,y,8,1.65,4,'M2.5 insert pilot',CUT)
+    tray=comp('06 ESP32 USB tray')
+    rounded(tray,12.5,10,55,110,70,3,3,'Removable controller tray')
+    for x in [17.5,117.5]:
+        for y in [20,70]:
+            circle(tray,x,y,55,1.7,3,'M3 tray screw',CUT)
+            box(shell,1 if x<60 else 111,y-6,48,23,12,7,'Tray ledge',JOIN)
+            circle(shell,x,y,50,2.2,5,'M3 insert pilot',CUT)
+    rounded(tray,88,17,55,18,32,1,3,'Antenna keepout',CUT)
+    # Generic 44-pin DevKit is held with soft pads and two ties, not guessed PCB holes.
+    for x in [46,78]:
+        for y in [16,47]:rounded(tray,x,y,55,4,2,0.5,3,'Controller tie slot',CUT)
+        for y in [27,36]:box(tray,x,y,58,4,4,5,'PCB support - verify underside clearance',JOIN)
+    # ST7796-family purchased references: full outline + conservative 14.3 mm stack.
+    board=comp('E01 MSP3525 no-touch PCB - verify supplied variant',False)
+    box(board,px,py,12,98,55.5,1.6,'MSP3525 family PCB outline')
+    for x,y in mounts:circle(board,x,y,12,1.6,1.6,'Family drawing 3.2mm fixing',CUT)
+    glass=comp('E02 MSP3525 LCD glass - nominal stack',False)
+    box(glass,26.08,93.25,9,84.96,55.5,3,'LCD and adhesive envelope')
+    screen=comp('REF Green active area 480x320',False)
+    box(screen,30.78,96.52,8.9,73.44,48.96,0.1,'Active area - align physically')
+    headers=comp('E03 Display header and rear components - keepouts',False)
+    box(headers,20.3,103.24,13.6,2.54,35.56,9.7,'14-pin header clearance to total 14.3mm')
+    box(headers,91,114,13.6,22,18,3,'SD socket and components envelope - unused')
+    controls=[]
+    for x,name in [(36,'Select push knob'),(99,'Intensity knob')]:
+        c=comp('REF '+name,False);circle(c,x,36,-16,11,13,'Purchased 22mm knob');controls.append(c)
+    for x,label in [(18,'HOLD'),(117,'GRID')]:
+        c=comp('REF '+label+' toggle',False);circle(c,x,70,-2,4,2,'Toggle washer');circle(c,x,70,-15,1.5,13,'Toggle lever');box(c,x-5,64,3,10,12,17,'Switch body');controls.append(c)
+    encoder=comp('E04 EC11 push encoder - generic envelope',False);box(encoder,29.5,29.5,3,13,13,17,'Encoder body')
+    pot=comp('E05 B10K pot - generic envelope',False);circle(pot,99,36,3,8.5,17,'Pot body')
+    esp=comp('E06 ESP32-S3 44-pin N8R8 - provisional fit envelope',False)
+    box(esp,40,20,64,62.5,25.4,1.6,'DevKit PCB - verify clone outline')
+    box(esp,70,23.7,65.6,20,18,3.4,'ESP module envelope')
+    for y in [22,35]:box(esp,40,y,65.6,7,8,4,'USB connector envelope')
+    for y in [20,42.86]:box(esp,43,y,59,55.88,2.5,5,'Soldered pin header envelope')
+    wire=comp('W01 Display and control harness corridor',False)
+    box(wire,23,40,32,3,85,3,'SPI service corridor')
+    box(wire,23,110,23.3,3,3,8.7,'Display connector approach')
+    usb=comp('W02 Single USB data power cable corridor',False)
+    box(usb,15,33,65.6,25,12,8,'USB-C plug and boot - confirm cable')
+    box(usb,16,28,73,5,8,19,'Rear cable service loop')
+    foam=comp('H01 Soft pads and two controller ties',False)
+    for x in [46,78]:
+        for y in [27,36]:box(foam,x,y,63,4,4,1,'Insulating foam pad')
+        box(foam,x,16,70,3,33,1,'Loose tie reference - route over clear PCB')
+    lib=app.materialLibraries.itemByName('Fusion Appearance Library');base=lib.appearances.itemByName('Plastic - Matte (White)') if lib else None
+    if base:
+        palette=[('Ivory PLA',(232,222,198,255),[front,shell,rear]),('Charcoal PLA',(40,43,40,255),[bezel,carrier,tray]+controls),('Phosphor green',(30,180,65,255),[screen]),('PCB green',(20,100,62,255),[board,esp]),('Display dark',(20,25,20,255),[glass,headers]),('Signal blue',(45,115,230,255),[wire]),('USB orange',(220,115,35,255),[usb]),('Soft pad',(100,100,95,255),[foam])]
+        for name,color,components in palette:
+            a=design.appearances.addByCopy(base,name);prop=adsk.core.ColorProperty.cast(a.appearanceProperties.itemById('opaque_albedo'))
+            if prop:prop.value=adsk.core.Color.create(*color)
+            for c in components:
+                for b in c.bRepBodies:b.appearance=a
+    issues=[design.timeline.item(i).errorOrWarningMessage for i in range(design.timeline.count) if design.timeline.item(i).healthState!=adsk.fusion.FeatureHealthStates.HealthyFeatureHealthState]
+    assert not issues,str(issues)
+    for c in printable:assert c.bRepBodies.count==1 and c.bRepBodies.item(0).isSolid,c.name
+    os.makedirs(OUT,exist_ok=True)
+    print(json.dumps({'document':doc.name,'features':design.timeline.count,'issues':issues,'printable_parts':len(printable),'family_display_holes_mm':mounts}))

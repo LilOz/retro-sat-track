@@ -6,7 +6,7 @@
 - Seven numbered STL/STEP pairs: printable parts only; units millimetres, assembly coordinates retained.
 - PNG previews, `validation.json`, `interference.json` and `mesh-validation.json`: exported-model evidence.
 
-Import the complete F3D into Fusion to edit the checked design. Do not print the assembly STEP or electronic references. Physical fit and electrical testing remain outstanding; see the current [assembly guide](../../ASSEMBLY.md).
+Import the complete F3D into Fusion to edit the checked design. Do not print the assembly STEP or electronic references. Physical fit and electrical testing remain outstanding; see the Rev E [assembly guide](../../revisions/reve/ASSEMBLY.md).
 
 `BuildRevE.py.txt` is the consolidated Fusion Python generator; it creates a new document. `ExportRevE.py.txt` checks and exports the active Rev E design. Rename a copy to `.py` and use Fusion's script runner, or execute via the local Fusion MCP. Change `OUT` if a different export directory is needed. The live design was built in smaller MCP stages with corrections; the consolidated generator has been syntax-checked but not separately replayed end-to-end, so its timeline count can differ from the archived as-built model.
 
