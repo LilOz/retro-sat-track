@@ -1,0 +1,19 @@
+{
+  "document": "ORBIT Desktop Terminal - Rev F budget MSP3525 USB",
+  "timeline_features": 413,
+  "issues": [],
+  "printable_component_count": 6,
+  "rigid_interferences": [],
+  "rigid_component_count": 17,
+  "narrow_phase_pair_checks": 26,
+  "excluded_flexible_references": [
+    "W01",
+    "W02",
+    "H01"
+  ],
+  "limitations": [
+    "MSP3525 family XY drawing; delivered SKU, stack, controller and cable fit provisional",
+    "No physical fit, electrical, thermal or runtime validation"
+  ],
+  "assembled_shell_visible": true
+}
