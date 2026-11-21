@@ -126,13 +126,23 @@ Position geographic(float latitude, float longitude) {
     return {std::cos(lat) * std::cos(lon), std::cos(lat) * std::sin(lon), std::sin(lat)};
 }
 
-Projected project(Position position) {
-    static const Position toward = geographic(20, 8);
-    static const Position east = geographic(0, 98);
-    static const Position north = geographic(110, 8);
-    return {globeX + globeRadius * dot(east, position),
-            globeY - globeRadius * dot(north, position), dot(toward, position)};
-}
+class GlobeProjection {
+public:
+    explicit GlobeProjection(float longitude)
+        : toward_(geographic(20, longitude)),
+          east_(geographic(0, longitude + 90)),
+          north_(geographic(110, longitude)) {}
+
+    Projected project(Position position) const {
+        return {globeX + globeRadius * dot(east_, position),
+                globeY - globeRadius * dot(north_, position), dot(toward_, position)};
+    }
+
+private:
+    Position toward_;
+    Position east_;
+    Position north_;
+};
 
 void segment(Surface& out, Projected a, Projected b, Color color) {
     out.line(std::lround(a.x), std::lround(a.y), std::lround(b.x), std::lround(b.y), color);
@@ -169,32 +179,32 @@ void circle(Surface& out, int x, int y, int radius, Color color, bool filled = f
     }
 }
 
-void graticule(Surface& out) {
+void graticule(Surface& out, const GlobeProjection& projection) {
     for (int lat = -60; lat <= 60; lat += 30) {
-        auto last = project(geographic(lat, -180));
+        auto last = projection.project(geographic(lat, -180));
         for (int lon = -175; lon <= 180; lon += 5) {
-            const auto point = project(geographic(lat, lon));
+            const auto point = projection.project(geographic(lat, lon));
             frontSegment(out, last, point, gridLine);
             last = point;
         }
     }
     for (int lon = -180; lon < 180; lon += 30) {
-        auto last = project(geographic(-90, lon));
+        auto last = projection.project(geographic(-90, lon));
         for (int lat = -85; lat <= 90; lat += 5) {
-            const auto point = project(geographic(lat, lon));
+            const auto point = projection.project(geographic(lat, lon));
             frontSegment(out, last, point, gridLine);
             last = point;
         }
     }
 }
 
-void drawCoasts(Surface& out) {
+void drawCoasts(Surface& out, const GlobeProjection& projection) {
     std::size_t index = 0;
     for (auto size : coastRingSizes) {
         Projected last{};
         for (int i = 0; i < size; ++i) {
             const auto vertex = coastPoints[index++];
-            const auto point = project(geographic(vertex.latitude * .01f, vertex.longitude * .01f));
+            const auto point = projection.project(geographic(vertex.latitude * .01f, vertex.longitude * .01f));
             if (i > 0) frontSegment(out, last, point, coast);
             last = point;
         }
@@ -222,13 +232,13 @@ void orbitSegment(Surface& out, Projected a, Projected b, Color color) {
     }
 }
 
-void drawOrbit(Surface& out, const Object& object) {
+void drawOrbit(Surface& out, const Object& object, const GlobeProjection& projection) {
     const auto count = std::min(object.orbitCount, object.orbit.size());
     if (count < 2) return;
 
-    auto last = project(object.orbit[count - 1]);
+    auto last = projection.project(object.orbit[count - 1]);
     for (std::size_t i = 0; i < count; ++i) {
-        const auto point = project(object.orbit[i]);
+        const auto point = projection.project(object.orbit[i]);
         if ((last.depth < 0) == (point.depth < 0)) {
             orbitSegment(out, last, point, point.depth < 0 ? orbitFar : highlight);
         } else {
@@ -353,21 +363,22 @@ bool markerFits(Projected point, int margin) {
            && point.y >= mapTop + margin && point.y <= mapBottom - margin;
 }
 
-void globe(Surface& out, const Scene& scene, const Object* selected, bool grid) {
+void globe(Surface& out, const Scene& scene, const Object* selected, bool grid, int longitude) {
+    const GlobeProjection projection(longitude);
     circle(out, globeX, globeY, globeRadius, ocean, true);
-    if (grid) graticule(out);
-    drawCoasts(out);
+    if (grid) graticule(out, projection);
+    drawCoasts(out, projection);
     circle(out, globeX, globeY, globeRadius, coast);
-    if (selected) drawOrbit(out, *selected);
+    if (selected) drawOrbit(out, *selected, projection);
     for (std::size_t i = 0; i < objectCount(scene); ++i) {
         const auto& object = scene.objects[i];
         if (&object == selected) continue;
-        const auto mark = project(object.position);
+        const auto mark = projection.project(object.position);
         if (!markerFits(mark, 2)) continue;
         out.fillRect(std::lround(mark.x) - 2, std::lround(mark.y) - 2, 5, 5, green);
     }
     if (!selected) return;
-    const auto mark = project(selected->position);
+    const auto mark = projection.project(selected->position);
     if (markerFits(mark, 8)) {
         const int x = std::lround(mark.x);
         const int y = std::lround(mark.y);
@@ -401,8 +412,9 @@ void nextPass(Surface& out, const Object& object, bool observerConfigured, int64
     }
 }
 
-void earth(Surface& out, const Scene& scene, const Selection& selected, bool grid, int64_t now) {
-    globe(out, scene, selected.object, grid);
+void earth(Surface& out, const Scene& scene, const Selection& selected,
+           bool grid, int longitude, int64_t now) {
+    globe(out, scene, selected.object, grid, longitude);
     out.fillRect(294, 43, 1, 248, rules);
     if (selected.entry.norad == 0) {
         text(out, 308, 73, "NO OBJECTS", pale, 2);
@@ -511,7 +523,12 @@ int64_t Ui::displayTime(int64_t nowUtc) const {
 void Ui::input(Action action, const Scene& scene, int64_t nowUtc) {
     switch (action) {
     case Action::back:
-        view_ = view_ == View::satellites ? View::categories : View::earth;
+        if (view_ == View::earth) {
+            draftLongitude_ = globeLongitude_;
+            view_ = View::rotatingEarth;
+        } else {
+            view_ = view_ == View::satellites ? View::categories : View::earth;
+        }
         break;
     case Action::push:
         push(scene);
@@ -536,6 +553,10 @@ void Ui::push(const Scene& scene) {
     switch (view_) {
     case View::earth:
         if (selectedObject(scene, selectedNorad_).entry.norad != 0) view_ = View::details;
+        break;
+    case View::rotatingEarth:
+        globeLongitude_ = draftLongitude_;
+        view_ = View::earth;
         break;
     case View::categories:
         if (count != 0) view_ = View::satellites;
@@ -566,6 +587,11 @@ void Ui::turn(bool forward, const Scene& scene, int64_t now) {
     case View::earth:
         if (count != 0) view_ = View::categories;
         break;
+    case View::rotatingEarth: {
+        constexpr int step = 12;
+        draftLongitude_ = (draftLongitude_ + 360 + (forward ? step : -step)) % 360;
+        break;
+    }
     case View::categories:
         category_ = stepRow(category_, count, forward);
         break;
@@ -614,10 +640,15 @@ void Ui::draw(Surface& out, const Scene& scene, int64_t nowUtc) const {
 
     const auto selected = selectedObject(scene, selectedNorad_);
     const auto now = displayTime(nowUtc);
-    if (view_ == View::earth) {
+    if (view_ == View::earth || view_ == View::rotatingEarth) {
+        const bool rotating = view_ == View::rotatingEarth;
         text(out, 12, 10, "ORBIT / EARTH", green, 2);
-        earth(out, scene, selected, grid_, now);
-        text(out, 12, 309, "ROTATE SELECT / PUSH DETAILS", green);
+        earth(out, scene, selected, grid_, rotating ? draftLongitude_ : globeLongitude_, now);
+        if (rotating) {
+            text(out, 308, 15, "ROTATE", highlight);
+        } else {
+            text(out, 12, 309, "ROTATE SELECT / PUSH DETAILS", green);
+        }
     } else if (view_ == View::details) {
         text(out, 12, 10, "ORBIT / DETAILS", green, 2);
         text(out, 204, 15, selected.entry.name, muted, 1, 384);

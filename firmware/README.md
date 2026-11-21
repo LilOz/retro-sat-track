@@ -22,9 +22,11 @@ cmake --build build/orbit-rev-f --parallel
 | --- | --- |
 | Left / Right or Up / Down | Open Categories from Earth, then move through categories, satellites, or pass rows |
 | Enter / Space | Open a category or select a satellite. On Earth, push to open Details, then Passes |
-| Esc / Backspace | Go back one level in the picker, or return from Details or Passes to Earth |
+| Esc / Backspace | Simulate a long press. Enter rotation mode on Earth or go back from another view |
 | H / G | Freeze or resume the displayed clock / toggle the Earth grid |
 | Q | Close the preview |
+
+While `ROTATE` is visible, use Left or Up to rotate the globe west and Right or Down to rotate it east. Enter or Space keeps the orientation for this session. Esc or Backspace cancels the change.
 
 **SAMPLE** includes a grouped offline catalog and illustrative orbit and telemetry data for ISS, TIANGONG, HST, and NOAA 19. Other catalog entries display an unavailable state. The simulated UTC pass clock starts at 14:23:28 with a sample London observer. Positions and telemetry are fixed, and the countdown advances while the window runs. For actual orbital data, use the [PC tracker](../docs/PC-GUIDE.md).
 

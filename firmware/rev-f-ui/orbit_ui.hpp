@@ -90,7 +90,7 @@ public:
     void draw(Surface& surface, const Scene& scene, int64_t nowUtc) const;
 
 private:
-    enum class View { earth, categories, satellites, details, passes };
+    enum class View { earth, rotatingEarth, categories, satellites, details, passes };
 
     int64_t displayTime(int64_t nowUtc) const;
     void push(const Scene& scene);
@@ -101,6 +101,8 @@ private:
     std::size_t category_ = 0;
     std::array<std::size_t, maxCategories> satelliteRows_{};
     std::size_t selectedPass_ = 0;
+    int globeLongitude_ = 8;
+    int draftLongitude_ = 8;
     bool grid_ = true;
     bool held_ = false;
     int64_t heldTime_ = 0;
