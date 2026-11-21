@@ -1,4 +1,4 @@
-# 3.5-inch screen concept — not implemented firmware
+# 3.5-inch screen concept
 
 ![Three 480×320 concept views](images/ui-views.png)
 
@@ -13,4 +13,4 @@ The artwork uses **illustrative values** and has no data connection. At a 73.44�
 | HOLD / GRID | Freeze the displayed timestamp / toggle map grid |
 | INTENSITY | Backlight control after verifying module LED input |
 
-The existing backend provides catalogue, state, track and pass endpoints. The checked-in embedded source is a **legacy HX8357D telemetry starter**, not this interface. Planned ST7796U driver and input work is listed in [firmware](../firmware/README.md).
+The [Rev F desktop prototype](../firmware/README.md#run-the-rev-f-preview) implements these three views with sample data and a grouped satellite picker. The existing backend provides catalogue, state, track and pass endpoints. The ESP32 display and encoder adapter is pending, and the HX8357D telemetry client remains the Rev E build.
