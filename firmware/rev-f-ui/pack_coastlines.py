@@ -23,7 +23,9 @@ def main(source: Path, destination: Path) -> None:
                 points.extend(packed)
 
     with destination.open("w", encoding="utf-8") as output:
-        output.write("// Generated from the bundled public-domain Natural Earth land data.\n")
+        output.write(
+            "// Generated from the bundled public-domain Natural Earth land data.\n"
+        )
         output.write("struct CoastPoint { int16_t latitude; int16_t longitude; };\n")
         output.write("constexpr CoastPoint coastPoints[] = {\n")
         for i in range(0, len(points), 6):
