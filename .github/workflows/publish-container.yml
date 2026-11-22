@@ -1,0 +1,62 @@
+name: Publish backend container
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .dockerignore
+      - Dockerfile
+      - README.md
+      - backend/app/**
+      - compose.yaml
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/publish-container.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-backend-container-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    if: github.repository == 'LilOz/retro-sat-track' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/liloz/retro-sat-track
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: |
+          docker build --platform linux/amd64 \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --tag "$IMAGE:latest" --tag "$IMAGE:$GITHUB_SHA" .
+      - name: Verify the TrueNAS Compose app
+        run: |
+          docker compose up --detach --wait --wait-timeout 60 --pull never
+          curl --fail --silent --show-error http://127.0.0.1:8000/ > /dev/null
+          curl --fail --silent --show-error http://127.0.0.1:8000/static/style.css > /dev/null
+          curl --fail --silent --show-error http://127.0.0.1:8000/api/v1/observer \
+            --header 'Content-Type: application/json' \
+            --data '{"name":"Smoke test","latitude_deg":51.5,"longitude_deg":-0.12}' > /dev/null
+          docker compose up --detach --wait --wait-timeout 60 --pull never --force-recreate
+          curl --fail --silent --show-error http://127.0.0.1:8000/api/v1/status \
+            | jq --exit-status '.status == "ok" and .observer.name == "Smoke test"'
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Publish to GitHub Container Registry
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:latest"

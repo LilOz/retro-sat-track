@@ -1,0 +1,12 @@
+services:
+  orbit:
+    image: ghcr.io/liloz/retro-sat-track:latest
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - orbit-data:/data
+
+volumes:
+  orbit-data:
