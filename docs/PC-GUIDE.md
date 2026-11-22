@@ -21,6 +21,18 @@ Open **http://127.0.0.1:8000** if your browser does not open automatically. For 
 
 Select **Set ground station** and enter your name, latitude, longitude and elevation. The app starts with the ISS and leaves coordinates unset until saved. Coordinates stay in the local data directory and are never sent to CelesTrak.
 
+## Run with Docker or TrueNAS
+
+On **TrueNAS SCALE 24.10 or later**, select an Apps pool if needed. In **Apps → Discover Apps → ⋮ → Install via YAML**, name the app `retro-sat-track`, paste the contents of [compose.yaml](../compose.yaml), and save. TrueNAS pulls the `linux/amd64` image `ghcr.io/liloz/retro-sat-track:latest` from GitHub Container Registry. See the [TrueNAS Custom Apps guide](https://apps.truenas.com/managing-apps/installing-custom-apps/).
+
+On a regular Docker host, save `compose.yaml` and run this command from the same directory:
+
+```sh
+docker compose up -d --wait
+```
+
+Open `http://<server-ip>:8000` for the UI or `http://<server-ip>:8000/api/v1/status` to check service health. If port 8000 is taken on the host, change the left side of `8000:8000` in the YAML and use that port in the URL. The `orbit-data` volume keeps the ground station and CelesTrak cache across container replacements. The service needs outbound HTTPS access to `celestrak.org` to fetch fresh orbital elements.
+
 ## Three displays
 
 - **01 / Orbital situation:** rotating Earth with bundled coastlines, grid, actual-altitude orbit, spacecraft markers, telemetry, next-pass countdown and a compact scrolling event log. The separate ground-track map is omitted to suit the eventual embedded display. Drag to rotate, scroll to zoom, or select **Find object**.

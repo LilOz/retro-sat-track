@@ -26,6 +26,10 @@ uv run --locked run.py
 
 Open **http://127.0.0.1:8000**. Uses Python 3.14; set your ground station in the UI. [Setup, controls, API, data behaviour and development checks](docs/PC-GUIDE.md).
 
+## Run on TrueNAS
+
+The [GitHub Container Registry image](https://github.com/users/LilOz/packages/container/package/retro-sat-track) serves the browser UI and API from the same port. Use [compose.yaml](compose.yaml) to install it as a TrueNAS Custom App. [Docker and TrueNAS setup](docs/PC-GUIDE.md#run-with-docker-or-truenas).
+
 ![Working browser application](docs/orbit-preview.jpg)
 
 Positions are predictions from orbital elements, not spacecraft measurements; passes are geometric opportunities, not guaranteed optical visibility. [Sources and attribution](docs/PC-GUIDE.md#attribution).
